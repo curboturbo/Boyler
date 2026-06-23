@@ -1,8 +1,7 @@
-package adapters
+package image
 
 import (
-	"boyler/internal/domain"
-	"boyler/internal/ports"
+	"boyler/internal/daemon/domain"
 	"boyler/pkg/files"
 	"encoding/json"
 	"log/slog"
@@ -15,7 +14,7 @@ type imageManager struct {
     logger   *slog.Logger
 }
 
-func NewImageManager(imageDir string, logger *slog.Logger) ports.ImageManager {
+func NewImageManager(imageDir string, logger *slog.Logger) ImageManager {
     return &imageManager{imageDir: imageDir, logger:logger}
 }
 
