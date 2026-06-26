@@ -101,7 +101,7 @@ func (i *imageManager) Delete(name string) error {
     return nil
 }
 
-func (i *imageManager) Get (name string) (*domain.Image,error) {
+func (i *imageManager) Get(name string) (*domain.Image,error) {
 	path := filepath.Join(i.imageDir, name, "meta.json")
 	_, err := os.Stat(path)
 	if err != nil{
