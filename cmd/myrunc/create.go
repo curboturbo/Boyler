@@ -14,8 +14,7 @@ import (
 func execCreateContainer(i *execInfo) error {
 	runcDir := filepath.Join("/var/run/myrunc", i.id) // create root dir var temp files
 	if err := os.MkdirAll(runcDir, 0755); err != nil{
-		fmt.Fprintf(os.Stderr, "Failed to create state dir: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to create state dir: %v\n", err)
 	}
 
 	pipePath := filepath.Join(runcDir,"signal.fifo")
@@ -25,14 +24,12 @@ func execCreateContainer(i *execInfo) error {
 
 	err := syscall.Mknod(pipePath, syscall.S_IFIFO|0666, 0)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create FIFO: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to create FIFO: %v\n", err)
 	}
 
 	err = syscall.Mknod(pipePath2, syscall.S_IFIFO|0666, 0)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create FIFO: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to create FIFO: %v\n", err)
 	}
 
 	cmd := exec.Command("/proc/self/exe","init", i.id,"--bundle", i.bundlePath)
@@ -51,26 +48,22 @@ func execCreateContainer(i *execInfo) error {
 
 	// fork process
 	if err := cmd.Start(); err != nil{ 
-		fmt.Fprintf(os.Stderr, "Failed to fork init process: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to fork init process: %v\n", err)
 	}
 	
 	readyPipe, err := os.OpenFile(pipePath, os.O_RDONLY, 0)
 	if err != nil{
-		fmt.Fprintf(os.Stderr, "Failed to open ready pipe: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to open ready pipe: %v\n", err)
 	}
 	buffer := make([]byte, 1)
 	_, err = readyPipe.Read(buffer)
 	if err != nil{
-		fmt.Fprintf(os.Stderr, "Failed to take byte from pipe ready pipe (especial and rare fail): %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to take byte from pipe ready pipe (especial and rare fail): %v\n", err)
 	}
 	readyPipe.Close()
 	if err = createState(runcDir, i.id, cmd.Process.Pid, i.bundlePath); err != nil{
-		fmt.Fprintf(os.Stderr, "Failed to save state.json, kill myself and forked process: %v\n", err)
 		_ = cmd.Process.Kill()
-		os.Exit(1)
+		return fmt.Errorf("Failed to save state.json, kill myself and forked process: %v\n", err)
 	}
 	return nil
 }
@@ -82,12 +75,12 @@ func createState(runcDir string, id string, pid int, bundlePath string) error {
 		PID: pid,
 		BundlePath: bundlePath,
 		Status: "created",
-		OciVerion: OCI_VERSION,
+		OciVersion: OCI_VERSION,
 	}
-	
 	jsonData,err := json.MarshalIndent(state, "", "    ")
 	if err != nil {return err}
 	path := filepath.Join(runcDir,"state.json")
+	os.Stdout.Write(jsonData)
 	return os.WriteFile(path, jsonData, 0644)
 }
 
@@ -105,7 +98,7 @@ const OCI_VERSION = "1.02.2"
 type State struct {
 	ID 			string `json:"id"`
 	PID         int    `json:"pid"`
-	OciVerion   string `json:"ociVersion"`
+	OciVersion   string `json:"ociVersion"`
 	Status      Status `json:"status"`
 	BundlePath  string `json:"bundle"`
 }

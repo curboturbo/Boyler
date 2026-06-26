@@ -22,17 +22,23 @@ func NewMyRunc(binaryPath string) runtime.Runtime {
 }
 
 
-func (r *myRunc) Create(ctx context.Context, id string, bundlePath string) error {
+func (r *myRunc) Create(ctx context.Context, id string, bundlePath string) (*runtime.State, error) {
 	absBundlePath, err := filepath.Abs(bundlePath)
 	if err != nil{
-		return fmt.Errorf("Invalid bundle path")
+		return &runtime.State{},fmt.Errorf("Invalid bundle path")
 	}
+	var stdout bytes.Buffer
 	cmd := exec.CommandContext(ctx, r.binaryPath, "create", id, "--bundle", absBundlePath)
 	cmd.Stderr = os.Stderr
+	cmd.Stdout = &stdout
 	if err = cmd.Run(); err != nil{
-		return fmt.Errorf("Failed run myrunc binary: %w", err)
+		return &runtime.State{}, fmt.Errorf("Failed run myrunc binary: %w", err)
 	}
-	return nil
+	var containerState runtime.State
+	if err := json.Unmarshal(stdout.Bytes(), &containerState); err != nil{
+		return &runtime.State{}, fmt.Errorf("Failed to parse state.json container: %w", err)
+	}
+	return &containerState, nil
 }
 
 

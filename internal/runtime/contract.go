@@ -9,7 +9,7 @@ import (
 )
 
 type Runtime interface {
-	Create(ctx context.Context, id string, bundlePath string) error
+	Create(ctx context.Context, id string, bundlePath string) (*State, error)
 
 	Run(ctx context.Context, id string) error
 

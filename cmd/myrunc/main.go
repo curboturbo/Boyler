@@ -19,6 +19,7 @@ func main(){
 	}
 	command := os.Args[1]
 	containerID := os.Args[2]
+	var err error
 	switch command{
 		case "create":
 			if len(os.Args) < 5 || os.Args[3]!= "--bundle"{
@@ -26,24 +27,28 @@ func main(){
 				os.Exit(1)
 			}
 			bundlePath := os.Args[4]
-			execCreateContainer(&execInfo{
+			err = execCreateContainer(&execInfo{
 				binaryPath: os.Args[0],
 				id: containerID,
 				bundlePath: bundlePath,
 			})
-
-		case "start":
-			execStartContainer(&execInfo{
+			
+		case "run":
+			err = execRunContainer(&execInfo{
 				id:containerID,
 				binaryPath: "",
 				bundlePath: os.Args[4],
 			})
 
 		case "state":
-			// чтение state.json
+			err = execCheckState(&execInfo{
+				id:containerID,
+				binaryPath: "",
+				bundlePath: os.Args[4],
+			})
 
 		case "init":
-			execInitContainer(&execInfo{
+			err = execInitContainer(&execInfo{
 				id: containerID,
 				binaryPath: "",
 				bundlePath: os.Args[4],
@@ -56,9 +61,12 @@ func main(){
 			// syscall на процесс
 
 		default:
-			fmt.Fprintf(os.Stderr, "Unknown command: %s\n",command)
-			os.Exit(1)
+			err = fmt.Errorf("Unknown command: %s\n",command)
 	}
+
+	if err != nil{
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
 }
-
-
