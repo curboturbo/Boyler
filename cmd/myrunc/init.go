@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"syscall"
+	"log"
 )
 
 // ИЗМЕНИТЬ ПОТОКИ ВВОДА-ВЫВОДА ДЛЯ КОНТЕЙНЕРА ОТДЕЛЬНО
@@ -45,18 +46,25 @@ func execInitContainer(i *execInfo) error {
 	pathSend := filepath.Join("/var/run/myrunc", i.id, "signal.fifo")
 	pathWait := filepath.Join("/var/run/myrunc", i.id, "go.fifo")
 
+	log.Println("OPEN <signal.fifo> to write (init.go): ", pathSend)
+
 	signalPipe, err := os.OpenFile(pathSend,os.O_WRONLY,0)
 	if err != nil{
 		return fmt.Errorf("Failed to open <signal.fifo:%v",err)
 	}
+	if err = sendSignal(signalPipe); err != nil{return err}
 	defer signalPipe.Close()
 
-	goPipe, err := os.OpenFile(pathWait,os.O_RDONLY,0)
+	log.Println("OPEN <go.fifo> to read and wait run.go (init.go): ", pathWait)
+
+	goPipe, err := os.OpenFile(pathWait, os.O_RDONLY,0)
 	if err != nil{
 		return fmt.Errorf("Failde to open <go.fifo>: %v",err)
 	}
 	defer goPipe.Close()
 
+	if err = waitSignal(goPipe); err != nil{return err}
+	// пересборка потоков ввода / вывода
 	if err = syscall.Chroot(rootfs); err != nil{
 		return fmt.Errorf("Failed chroot file system")
 	}
@@ -64,9 +72,6 @@ func execInitContainer(i *execInfo) error {
 	if err = os.Chdir("/"); err != nil {
 		return fmt.Errorf("Failed chidr file system")
 	}
-	if err = sendSignal(signalPipe); err != nil{return err}
-	if err = waitSignal(goPipe); err != nil{return err}
-	// пересборка потоков ввода / вывода
 	return mockStart()
 }
 
@@ -94,16 +99,17 @@ func waitSignal(goPipe *os.File) error {
 
 // mockStart "plug" before real user command for debug
 func mockStart() error {
-	args := []string{"/bin/sh"}
-	bin, err := exec.LookPath(args[0])
-	if err != nil{
-		fmt.Fprintf(os.Stderr, "Failed to find binary /bin/sh: %v\n", err)
-		os.Exit(1)
-	}
-	env := os.Environ()
-	if err = syscall.Exec(bin, args, env); err != nil{
-		fmt.Fprintf(os.Stderr, "Failed to execute /bin/sh in container: %v\n", err)
-		os.Exit(1)
-	}
-	return nil
+    // Заставляем контейнер спать 1000 секунд
+    args := []string{"/bin/sleep", "100000"}
+    
+    bin, err := exec.LookPath(args[0])
+    if err != nil {
+        return fmt.Errorf("Failed to find binary /bin/sleep: %v", err)
+    }
+    
+    env := os.Environ()
+    if err = syscall.Exec(bin, args, env); err != nil {
+        return fmt.Errorf("Failed to execute /bin/sleep in container: %v", err)
+    }
+    return nil
 }

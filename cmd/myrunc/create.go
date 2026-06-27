@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"syscall"
+	"log"
 )
 
 // execCreateContainer fork runc process and prepare container
@@ -50,7 +51,7 @@ func execCreateContainer(i *execInfo) error {
 	if err := cmd.Start(); err != nil{ 
 		return fmt.Errorf("Failed to fork init process: %v\n", err)
 	}
-	
+	log.Println("OPEN <signal.fifo> to Read (create.go): ", pipePath)
 	readyPipe, err := os.OpenFile(pipePath, os.O_RDONLY, 0)
 	if err != nil{
 		return fmt.Errorf("Failed to open ready pipe: %v\n", err)
@@ -65,6 +66,7 @@ func execCreateContainer(i *execInfo) error {
 		_ = cmd.Process.Kill()
 		return fmt.Errorf("Failed to save state.json, kill myself and forked process: %v\n", err)
 	}
+	log.Println("FINISH MY WORK")
 	return nil
 }
 

@@ -27,24 +27,23 @@ func (r *myRunc) Create(ctx context.Context, id string, bundlePath string) (*run
 	if err != nil{
 		return &runtime.State{},fmt.Errorf("Invalid bundle path")
 	}
-	var stdout bytes.Buffer
+	//var stdout bytes.Buffer
 	cmd := exec.CommandContext(ctx, r.binaryPath, "create", id, "--bundle", absBundlePath)
 	cmd.Stderr = os.Stderr
-	cmd.Stdout = &stdout
+	cmd.Stdout = os.Stdout
 	if err = cmd.Run(); err != nil{
 		return &runtime.State{}, fmt.Errorf("Failed run myrunc binary: %w", err)
 	}
-	var containerState runtime.State
-	if err := json.Unmarshal(stdout.Bytes(), &containerState); err != nil{
-		return &runtime.State{}, fmt.Errorf("Failed to parse state.json container: %w", err)
-	}
-	return &containerState, nil
+	fmt.Print("я закончил create")
+	return &runtime.State{}, nil
 }
 
 
 func (r *myRunc) Run(ctx context.Context, id string) error {
-	cmd := exec.CommandContext(ctx, r.binaryPath, "run", id)
+	fmt.Print("я начал run")
+	cmd := exec.CommandContext(ctx, r.binaryPath, "run", id, "--bundle", "absBundlePath")
 	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil{
 		return fmt.Errorf("Failed to run container: %w", err)
 	}

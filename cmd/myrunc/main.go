@@ -37,7 +37,7 @@ func main(){
 			err = execRunContainer(&execInfo{
 				id:containerID,
 				binaryPath: "",
-				bundlePath: os.Args[4],
+				bundlePath: "",
 			})
 
 		case "state":
@@ -53,13 +53,6 @@ func main(){
 				binaryPath: "",
 				bundlePath: os.Args[4],
 			})
-
-		case "delete":
-			// удаление
-
-		case "kill":
-			// syscall на процесс
-
 		default:
 			err = fmt.Errorf("Unknown command: %s\n",command)
 	}

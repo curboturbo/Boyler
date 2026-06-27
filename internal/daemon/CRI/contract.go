@@ -33,7 +33,7 @@ func Run() {
 	}
 
 	// 3. Формируем абсолютные пути внутри Boyler/lib
-	os.Getenv()
+	//os.Getenv()
 	imagesPath := filepath.Join(projectRoot, "lib", "images")         // ~/Boyler/lib/images
 	containersPath := filepath.Join(projectRoot, "lib", "containers") // ~/Boyler/lib/containers
 	runtimeBinPath := filepath.Join(projectRoot, "bin/myrunc")               // ~/Boyler/bin
@@ -82,8 +82,14 @@ func Run() {
 		logger.Error("Runtime creation failed", "error", err)
 		return
 	}
+	logger.Debug("Call Run-command")
 
-	logger.Info("Container successfully initialized by runtime!")
+	manager.Run(context.TODO(),containerID)
+	logger.Debug("End command")
+	var name string
+    fmt.Print("Введите ваше имя: ")
+    fmt.Scan(&name)
+
 }
 
 func Check(){

@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"log"
 )
 
 // execRunContainer send byte to pipe to stat contianer life-cycle
 func execRunContainer(i *execInfo) error {
 	path := filepath.Join("/var/run/myrunc", i.id)
 	pipePath := filepath.Join(path, "go.fifo")
+
+	log.Println("OPEN <go.fifo> to write (run.go): ", pipePath)
+
 	writePipe, err := os.OpenFile(pipePath, os.O_WRONLY,0)
 
 	if err != nil{
@@ -22,6 +26,7 @@ func execRunContainer(i *execInfo) error {
 	if err != nil{
 		return fmt.Errorf("Failed to write <go.fifo>: %v\n",err)
 	}
+	log.Println("Close <go.fifo> (run.go): ", pipePath)
 	return changeState(path, "running")
 }
 
