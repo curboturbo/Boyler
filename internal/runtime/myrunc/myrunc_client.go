@@ -2,7 +2,6 @@ package runc
 
 import (
 	"boyler/internal/runtime"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -55,6 +54,7 @@ func (c *myRunc) Kill(ctx context.Context, id string, signal os.Signal) error {
 	sigNum := fmt.Sprintf("%d", signal.(syscall.Signal))
 	cmd := exec.CommandContext(ctx, c.binaryPath, "kill", id, sigNum)
 	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("myrunc kill failed: %w", err)
 	}
@@ -75,15 +75,21 @@ func (c *myRunc) Delete(ctx context.Context, id string) error {
 
 func (c *myRunc) State(ctx context.Context, id string) (*runtime.State, error) {
 	cmd := exec.CommandContext(ctx, c.binaryPath, "state",id)
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return &runtime.State{}, fmt.Errorf("Failed to create StdoutPipe: %w", err)
+	}
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil{
+	if err := cmd.Start(); err != nil{
 		return &runtime.State{}, fmt.Errorf("Failed to request state container: %w", err)
 	}
 	var containerState runtime.State
-	if err := json.Unmarshal(stdout.Bytes(), &containerState); err != nil{
-		return &runtime.State{}, fmt.Errorf("Failed to parse state.json container: %w", err)
+	if err := json.NewDecoder(stdout).Decode(&containerState); err != nil {
+		return &runtime.State{}, fmt.Errorf("Failed to decode struct: %w", err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return &runtime.State{}, fmt.Errorf("Unknown error during execution: %w", err)
 	}
 	return &containerState, nil
 }

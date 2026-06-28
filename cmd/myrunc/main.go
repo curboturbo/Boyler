@@ -5,10 +5,12 @@ import (
 	"os"
 )
 
+// info for start process
 type execInfo struct {
 	binaryPath string // file to binary example
 	id string		  // container id
 	bundlePath string // path to boyler/container/container_xxx
+	sigNum string     // signal to process (SIGTERM, SIGKILL and e.t.c)
 }
 
 
@@ -36,30 +38,35 @@ func main(){
 		case "run":
 			err = execRunContainer(&execInfo{
 				id:containerID,
-				binaryPath: "",
-				bundlePath: "",
 			})
 
 		case "state":
-			err = execCheckState(&execInfo{
+			err = execCheckStateContainer(&execInfo{
 				id:containerID,
-				binaryPath: "",
-				bundlePath: os.Args[4],
 			})
 
 		case "init":
 			err = execInitContainer(&execInfo{
 				id: containerID,
-				binaryPath: "",
 				bundlePath: os.Args[4],
 			})
+
+		case "stop":
+			err = execKillContainer(&execInfo{
+				id:containerID,
+				sigNum: os.Args[3],
+			})
+
+		case "delete":
+			err = execDeleteContainerRuntime(&execInfo{
+				id: containerID,
+			})
+
 		default:
 			err = fmt.Errorf("Unknown command: %s\n",command)
 	}
-
 	if err != nil{
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-
 }

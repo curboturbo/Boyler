@@ -6,11 +6,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"syscall"
-	"log"
 )
 
-// ИЗМЕНИТЬ ПОТОКИ ВВОДА-ВЫВОДА ДЛЯ КОНТЕЙНЕРА ОТДЕЛЬНО
-// execInitContainer prepare container ro run
+// ИЗМЕНИТЬ ПОТОКИ ВВОДА-ВЫВОДА ДЛЯ КОНТЕЙНЕРА ОТДЕЛЬНО, DAEMON прокидывает, а мы будем 
+// хранить все потоки вывода sterr,steout в container.log
+// когда будем открывать через nsenter, потоки родительского основного терминала
+// перейдут к нам, так как мы создадим дочерний процесс внутри нашего изолированного контйенера
+// prepare container and wait run command from daemon
 func execInitContainer(i *execInfo) error {
 	syscall.Sethostname([]byte(i.id))
 
@@ -43,19 +45,17 @@ func execInitContainer(i *execInfo) error {
 		return fmt.Errorf("Failed mount sysfs to container: %v",err)
 	}
 
-	pathSend := filepath.Join("/var/run/myrunc", i.id, "signal.fifo")
-	pathWait := filepath.Join("/var/run/myrunc", i.id, "go.fifo")
+	pathSend := filepath.Join(os.Getenv("STATE_PATH_MYRUNC"), i.id, os.Getenv("SIGNAL_PIPE"))
+	pathWait := filepath.Join(os.Getenv("STATE_PATH_MYRUNC"), i.id, os.Getenv("GO_PIPE"))
 
-	log.Println("OPEN <signal.fifo> to write (init.go): ", pathSend)
 
-	signalPipe, err := os.OpenFile(pathSend,os.O_WRONLY,0)
+	signalPipe, err := os.OpenFile(pathSend, os.O_WRONLY,0)
 	if err != nil{
 		return fmt.Errorf("Failed to open <signal.fifo:%v",err)
 	}
+
 	if err = sendSignal(signalPipe); err != nil{return err}
 	defer signalPipe.Close()
-
-	log.Println("OPEN <go.fifo> to read and wait run.go (init.go): ", pathWait)
 
 	goPipe, err := os.OpenFile(pathWait, os.O_RDONLY,0)
 	if err != nil{
@@ -72,11 +72,11 @@ func execInitContainer(i *execInfo) error {
 	if err = os.Chdir("/"); err != nil {
 		return fmt.Errorf("Failed chidr file system")
 	}
-	return mockStart()
+	return mockStartLinux()
 }
 
 
-// sendSignal send signal to parent process
+// send signal to parent process
 func sendSignal(signalPipe *os.File) error{
 	_, err := signalPipe.Write(make([]byte, 1))
 	if err != nil {
@@ -86,7 +86,7 @@ func sendSignal(signalPipe *os.File) error{
 }
 
 
-// waitSignal wait byte sending "start" command
+// wait byte sending "start" command
 func waitSignal(goPipe *os.File) error {
 	buffer := make([]byte, 1)
 	_, err := goPipe.Read(buffer)
@@ -97,16 +97,15 @@ func waitSignal(goPipe *os.File) error {
 }
 
 
-// mockStart "plug" before real user command for debug
-func mockStart() error {
+// "plug" before real user command for debug (onlu for linux images)
+func mockStartLinux() error {
     // Заставляем контейнер спать 1000 секунд
-    args := []string{"/bin/sleep", "100000"}
+    args := []string{"/bin/sleep", "1000"}
     
     bin, err := exec.LookPath(args[0])
     if err != nil {
         return fmt.Errorf("Failed to find binary /bin/sleep: %v", err)
     }
-    
     env := os.Environ()
     if err = syscall.Exec(bin, args, env); err != nil {
         return fmt.Errorf("Failed to execute /bin/sleep in container: %v", err)

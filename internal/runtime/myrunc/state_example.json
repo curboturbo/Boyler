@@ -1,7 +1,0 @@
-{
-  "ociVersion": "1.0.2",
-  "id": "ubuntu-test-123",
-  "status": "created",
-  "pid": 45122,
-  "bundle": "/var/lib/boyler/containers/ubuntu-test-123"
-}

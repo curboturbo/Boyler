@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"log"
 )
 
-// execRunContainer send byte to pipe to stat contianer life-cycle
+// send byte to pipe to start contianer life-cycle
 func execRunContainer(i *execInfo) error {
-	path := filepath.Join("/var/run/myrunc", i.id)
-	pipePath := filepath.Join(path, "go.fifo")
 
-	log.Println("OPEN <go.fifo> to write (run.go): ", pipePath)
+	path := filepath.Join(os.Getenv("STATE_PATH_MYRUNC"), i.id)
+	pipePath := filepath.Join(path, "go.fifo")
 
 	writePipe, err := os.OpenFile(pipePath, os.O_WRONLY,0)
 
@@ -26,31 +24,43 @@ func execRunContainer(i *execInfo) error {
 	if err != nil{
 		return fmt.Errorf("Failed to write <go.fifo>: %v\n",err)
 	}
-	log.Println("Close <go.fifo> (run.go): ", pipePath)
+
 	return changeState(path, "running")
 }
 
 
 // changeState change status <created> -> <running>
-func changeState(servicePath string, condition Status) error {
-	path := filepath.Join(servicePath,"state.json")
+func changeState(runcPath string, condition Status) error {
+	pathState := filepath.Join(runcPath, os.Getenv("MYRUNC_META"))
 
-	stateBytes, err := os.ReadFile(path)
+	containerState, err := readStateFile(pathState)
+	if err != nil{return err}
+
+	containerState.Status = condition
+	return writeStateFile(containerState, pathState)
+}
+
+// read state.json
+func readStateFile(pathState string) (state State, err error) {
+	stateBytes, err := os.ReadFile(pathState)
 	if err != nil {
-		return fmt.Errorf("Failed to read state.json: %v\n", err)
+		return State{}, fmt.Errorf("Failed to read state.json: %v\n", err)
 	}
 	var containerState State
 	err = json.Unmarshal(stateBytes, &containerState)
 	if err != nil{
-		return fmt.Errorf("Failed to open state.json:%v\n",err)
+		return State{}, fmt.Errorf("Failed to open state.json:%v\n",err)
 	}
-	containerState.Status = condition
+	return containerState, nil
+}
 
+// update state.json
+func writeStateFile(containerState State, pathState string) error{
 	update, err := json.MarshalIndent(containerState, "", "  ")
 	if err != nil {
 		return fmt.Errorf("Failed to marshal updated state: %v\n", err)
 	}
-	if err := os.WriteFile(path, update, 0644); err != nil {
+	if err := os.WriteFile(pathState, update, 0644); err != nil {
 		return fmt.Errorf("Failed to write updated state.json: %v\n", err)
 	}
 	return nil

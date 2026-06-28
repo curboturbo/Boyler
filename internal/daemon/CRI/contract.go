@@ -11,6 +11,8 @@ import (
 	"fmt"
 )
 
+
+// черновая херня для отладки
 func Run() {
 	// 1. Настраиваем JSON-логгер
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
@@ -88,8 +90,8 @@ func Run() {
 	logger.Debug("End command")
 	var name string
     fmt.Print("Введите ваше имя: ")
+	fmt.Print(manager.State(context.TODO(),"a"))
     fmt.Scan(&name)
-
 }
 
 func Check(){
