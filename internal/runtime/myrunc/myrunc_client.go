@@ -26,20 +26,17 @@ func (r *myRunc) Create(ctx context.Context, id string, bundlePath string) (*run
 	if err != nil{
 		return &runtime.State{},fmt.Errorf("Invalid bundle path")
 	}
-	//var stdout bytes.Buffer
 	cmd := exec.CommandContext(ctx, r.binaryPath, "create", id, "--bundle", absBundlePath)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	if err = cmd.Run(); err != nil{
 		return &runtime.State{}, fmt.Errorf("Failed run myrunc binary: %w", err)
 	}
-	fmt.Print("я закончил create")
 	return &runtime.State{}, nil
 }
 
 
 func (r *myRunc) Run(ctx context.Context, id string) error {
-	fmt.Print("я начал run")
 	cmd := exec.CommandContext(ctx, r.binaryPath, "run", id, "--bundle", "absBundlePath")
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout

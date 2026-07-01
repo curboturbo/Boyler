@@ -1,7 +1,7 @@
 package image
 
 import (
-	"boyler/internal/daemon/domain"
+	domain "boyler/internal/daemon/core"
 	"boyler/pkg/files"
 	"encoding/json"
 	"log/slog"

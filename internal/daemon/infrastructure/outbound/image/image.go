@@ -1,6 +1,6 @@
 package image
 
-import "boyler/internal/daemon/domain"
+import domain "boyler/internal/daemon/core"
 
 type ImageManager interface {
 	// Extract unpack .tar.gz archive
