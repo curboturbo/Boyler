@@ -7,7 +7,6 @@ import (
 )
 
 
-// using delegation pattern, brings responsibility to GroupOperator
 type ResourcesContainerManager interface {
 	GroupOperator
 	Apply(pid uint64) error

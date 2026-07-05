@@ -10,17 +10,17 @@ import (
 	overlay "boyler/internal/daemon/infrastructure/outbound/overlay"
 	run "boyler/internal/runtime"
 	limit "boyler/internal/daemon/infrastructure/outbound/limits"
-
+	registry "boyler/internal/daemon/infrastructure/outbound/registry"
 	"github.com/google/uuid"
 )
 
 
 type ContainerService interface {
 	CreateAndStart(ctx context.Context, container core.Container, network core.Net) (*run.State, error)
-	Start(ctx context.Context, conatainer core.Container) error
-	Stop(ctx context.Context, container core.Container) error
-	Delete(ctx context.Context, container core.Container) error
-	Restart(ctx context.Context, container core.Container) error
+	//Start(ctx context.Context, conatainer core.Container) error
+	//Stop(ctx context.Context, container core.Container) error
+	//Delete(ctx context.Context, container core.Container) error
+	//Restart(ctx context.Context, container core.Container) error
 }
 
 
@@ -29,8 +29,7 @@ type containerService struct{
 	fs overlay.VolumeManager
 	images layer.ImageManager
 	network net.NetworkManager
-	cgroups limit.ResourcesManager
-
+	reg registry.ResourcesRegistry
 }
 
 
@@ -39,12 +38,14 @@ func NewContainerService(
 	fs overlay.VolumeManager, 
 	images layer.ImageManager,
 	network net.NetworkManager,
+	reg registry.ResourcesRegistry,
 	) ContainerService{
 	return &containerService{
 		runtime: runtime,
 		fs : fs,
 		images: images,
 		network: network,
+		reg: reg,
 	}
 }
 
@@ -61,18 +62,13 @@ func (c *containerService) CreateAndStart(ctx context.Context, container core.Co
 	if err != nil{
 		return &run.State{}, fmt.Errorf("Failed create container: %v", err)
 	}
-
-
-
+	c.network.
 
 	if err = c.runtime.Run(ctx,state.ID); err != nil{
 		return &run.State{}, fmt.Errorf("Failed start container: %v", err)
 	}
-	return
+	
 
-
-
-	return &run.State{}, nil
 }
 
 

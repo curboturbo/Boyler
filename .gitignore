@@ -1,2 +1,5 @@
-internal/lib
-bin/
+/lib/
+/bin/
+
+*.tar
+*.tar.gz

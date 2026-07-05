@@ -12,7 +12,9 @@ type FirewallManager interface {
 	Forward(hostPort string, containerPort string, ipAddres string, bridgeName string) error
 }
 
-type firewallManager struct{}
+type firewallManager struct{
+
+}
 
 func NewFirewallManager () FirewallManager{
 	return &firewallManager{}
@@ -68,4 +70,36 @@ func (f *firewallManager) Forward(hostPort string, containerPort string, ipAddre
 	}
 
 	return nil
+}
+
+
+
+
+func dnatPreroutingCmd(action, hostPort, ipAddress, containerPort string) *exec.Cmd {
+	return exec.Command("iptables", "-t", "nat", action, "PREROUTING",
+		"-p", "tcp", "--dport", hostPort,
+		"-j", "DNAT", "--to-destination", fmt.Sprintf("%v:%v", ipAddress, containerPort))
+}
+
+func allowForwardCmd(action, ipAddress, containerPort string) *exec.Cmd {
+	return exec.Command("iptables", action, "FORWARD",
+		"-p", "tcp", "-d", ipAddress, "--dport", containerPort,
+		"-j", "ACCEPT")
+}
+
+func localhostRedirectCmd(action, hostPort, ipAddress, containerPort string) *exec.Cmd {
+	return exec.Command("iptables", "-t", "nat", action, "OUTPUT",
+		"-p", "tcp", "-o", "lo", "--dport", hostPort,
+		"-j", "DNAT", "--to-destination", ipAddress+":"+containerPort)
+}
+
+func masqueradeCmd(action, bridgeName string) *exec.Cmd {
+	return exec.Command("iptables", "-t", "nat", action, "POSTROUTING",
+		"-o", bridgeName, "-s", "127.0.0.1",
+		"-j", "MASQUERADE")
+}
+
+func routeLocalnetCmd(value, bridgeName string) *exec.Cmd {
+	return exec.Command("sysctl", "-w",
+		fmt.Sprintf("net.ipv4.conf.%v.route_localnet=%v", bridgeName, value))
 }
