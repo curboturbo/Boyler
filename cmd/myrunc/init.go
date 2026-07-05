@@ -97,6 +97,19 @@ func waitSignal(goPipe *os.File) error {
 }
 
 
+func SetupContainerDNS(rootfsPath string) error {
+	resolvConfPath := filepath.Join(rootfsPath, "etc", "resolv.conf")
+	etcDir := filepath.Dir(resolvConfPath)
+	if err := os.MkdirAll(etcDir, 0755); err != nil {
+		return fmt.Errorf("failed to create /etc directory inside container rootfs: %w", err)
+	}
+	dnsConfig := []byte("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")
+	if err := os.WriteFile(resolvConfPath, dnsConfig, 0644); err != nil {
+		return fmt.Errorf("failed to write /etc/resolv.conf inside container rootfs: %w", err)
+	}
+	return nil
+}
+
 // "plug" before real user command for debug (onlu for linux images)
 func mockStartLinux() error {
     // Заставляем контейнер спать 1000 секунд

@@ -17,12 +17,23 @@ type ContainerConfig struct {
 	Hostname string `json:"hostname"`
 	Env []string  	`json:"env"`
 	Args []string	`json:"args"`
-	Resources Cgroups `json:"cgroups"`
+	Resources Restriction `json:"cgroups"`
 }
 
 
-type Cgroups struct {
-	MemoryLimit int64	`json:"memory_limit"`
-	CPULimit int64 `json:"cpu_limit"`
-	CPUfsQ int64 	`json:"cpu_quota"`
+type Restriction struct {
+    Memory MemoryRestriction `json:"memory"`
+    CPU    CPURestriction    `json:"cpu"`
+}
+
+type MemoryRestriction struct {
+    Max *int64 `json:"max"`
+}
+
+type CPURestriction struct {
+    Weight *uint64 `json:"weight,omitempty"`
+    Quota  *int64  `json:"quota,omitempty"`
+    Period *uint64 `json:"period,omitempty"`
+    Cpus string `json:"cpus,omitempty"`
+    Mems string `json:"mems,omitempty"`
 }

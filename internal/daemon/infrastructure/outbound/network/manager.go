@@ -9,29 +9,46 @@ import (
 	"github.com/vishvananda/netns"
 )
 
+
+type Config struct {
+	eth0 string
+	forward string
+}
+
 // the manager who sets up the network for containers
-type NetwokManager interface{
+type NetworkManager interface{
 	// create virtual network interface
 	SetUpBridge(bridgeName string, bridgeIp string) error
 	// create virtual veth pair for container and bridge
-	CreateVethPair(containerPID int, vethName string)
+	CreateVethPair(containerPID int, vethName string) error
 	// connect veth pair to bridge
 	BindVethToBridge(vethName string, bridgeName string) error
 	// set up nat in host machine
-	BridgeOpen(internalNetwork string) error
+	BridgeOpen(internalNetwork string, bridgeName string) error
 	// setup all contianer network
 	SetupContainerNetwork(containerPID int, vethName string, ipAddress string, bridgeName string, bridgeIP string) error
-	// destroy all virtual interfeces
-	CleanUp(bridgeName string) error
-	// connects the container to an existing network
-	AddContainerToBridge(containerPID int)
 	// show veth
 	ShowVeth() []string
+	// create isolation
+	CreateIsolation(ipAddress string, bridgeName string) error
+	// restore isolation
+	RestoreIsolation(ipAddress string, bridgeName string) error 
+	// forward port
+	ForwardPort(hostPort string, containerPort string,ipAddres string, bridgeName string) error
 }
 
-// realization Network Manager
+
 type networkManager struct{
 	createdVeths []string
+	config Config
+	firewall FirewallManager
+}
+
+
+func NewNetworkManager(config Config) NetworkManager{
+	createdVeths := []string{}
+	firewall := NewFirewallManager()
+	return &networkManager{createdVeths: createdVeths, config: config, firewall: firewall}
 }
 
 
@@ -67,7 +84,7 @@ func (net *networkManager) CreateVethPair(contanerPID int, vethName string) erro
 
 	la := netlink.NewLinkAttrs()
 	la.Name = vethName
-	peerVethName := os.Getenv("DEFAULT_ETH0")
+	peerVethName := net.config.eth0
 	veth := &netlink.Veth{LinkAttrs: la, PeerName: peerVethName} 
 
 	if err := netlink.LinkAdd(veth); err != nil {
@@ -114,14 +131,14 @@ func (net *networkManager) BindVethToBridge(vethName string, bridgeName string) 
 }
 
 
-// all ip format - x.x.x.x/y
+// ip format - x.x.x.x/y
 func (net *networkManager) SetupContainerNetwork(containerPID int,vethName string, ipAddress string, bridgeName string, bridgeIP string) error {
-	peerVethName := os.Getenv("DEFAULT_ETH0")
+	peerVethName := net.config.eth0
 	hostNetNamespace, err := netns.Get()
 	if err != nil{
 		return fmt.Errorf("Failed get host-thread namespaces: %v", err)
 	}
-	defer hostNetNamespace.Close() // best practices in https://pkg.go.dev/github.com/vishvananda/netns#NsHandle
+	defer hostNetNamespace.Close()
 
 	containerNetNamespace, err := netns.GetFromPid(containerPID)
 	if err != nil{
@@ -177,12 +194,11 @@ func (net *networkManager) SetupContainerNetwork(containerPID int,vethName strin
 	return nil
 }
 
-func (net *networkManager) BridgeOpen(internalNetwork string) error {
-	// включаем пересылку 
-	if err := os.WriteFile(os.Getenv("IP_FORWARDING_PATH"), []byte("1\n"), 0644); err !=nil{
+func (net *networkManager) BridgeOpen(internalNetwork string, bridgeName string) error {
+	if err := os.WriteFile(net.config.forward, []byte("1\n"), 0644); err !=nil{
 		return fmt.Errorf("Failed enable ip-forwarding: %v",err)
 	}
-	cmd := exec.Command("iptables", "-t", "nat", "-A", "POSTROUTING", "-s", internalNetwork, "!", "-o", "br0", "-j", "MASQUERADE")
+	cmd := exec.Command("iptables", "-t", "nat", "-A", "POSTROUTING", "-s", internalNetwork, "!", "-o", bridgeName, "-j", "MASQUERADE")
     if err := cmd.Run(); err != nil{
 		return fmt.Errorf("Failed enable masquerade with host: %v",err)
 	}
@@ -195,17 +211,14 @@ func (net *networkManager) ShowVeth() []string{
 }
 
 
+func (net *networkManager) CreateIsolation(ipAddress string, bridgeName string) error {
+	return net.firewall.Isolate(ipAddress, bridgeName)
+}
 
+func (net *networkManager) RestoreIsolation(ipAddress string, bridgeName string) error {
+	return net.firewall.CancelIsolation(ipAddress, bridgeName)
+}
 
-func SetupContainerDNS(rootfsPath string) error {
-	resolvConfPath := filepath.Join(rootfsPath, "etc", "resolv.conf")
-	etcDir := filepath.Dir(resolvConfPath)
-	if err := os.MkdirAll(etcDir, 0755); err != nil {
-		return fmt.Errorf("failed to create /etc directory inside container rootfs: %w", err)
-	}
-	dnsConfig := []byte("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")
-	if err := os.WriteFile(resolvConfPath, dnsConfig, 0644); err != nil {
-		return fmt.Errorf("failed to write /etc/resolv.conf inside container rootfs: %w", err)
-	}
-	return nil
+func (net *networkManager) ForwardPort(hostPort string, containerPort string,ipAddres string,bridgeName string) error {
+	return net.firewall.Forward(hostPort, containerPort, ipAddres,bridgeName)
 }
