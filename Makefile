@@ -1,11 +1,12 @@
 
 ROOT=/home/tema/Boyler
 
-.PHONY: clean-test
+.PHONY: clean
 clean-test:
-	-sudo umount -l /home/tema/Boyler/lib/containers/a/merged # отмонируем merged от overlay
-	-sudo rm -rf /home/tema/Boyler/lib/containers/a
+	-sudo umount -l /home/tema/Boyler/lib/containers/8e6ff240-a1a5-4642-a58e-1a53b3222ee0/merged # отмонируем merged от overlay
+	-sudo rm -rf /home/tema/Boyler/lib/containers/8e6ff240-a1a5-4642-a58e-1a53b3222ee0
 	-sudo rm -rf /home/tema/Boyler/lib/images/alpine/rootfs
+	-sudo rm -rf /var/run/myrunc/8e6ff240-a1a5-4642-a58e-1a53b3222ee0
 	@echo "Alpine images and junk was cleaned"
 
 
@@ -18,8 +19,7 @@ compile:
 
 .PHONY: run
 run:
-	-export $(cat .env | xargs) # проброс окружение в дочерние потоки 
-	sudo -E ./bin/cobra run # подхватывает окружение
+	-export $$(cat .env | xargs) && sudo -E ./bin/cobra run
 	@echo "Test fun finished"
 
 
@@ -28,3 +28,5 @@ cond:
 	sudo lsns -p 123 # показывает namespaces конекртногоо PID
 	sudo nsenter -t 82050 -m -u -i -n -p /bin/sh # выбрасывает в терминал контйенра по PID
 	# заставляет отрыть bash в namepaces процесса
+
+

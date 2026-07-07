@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	daemon "boyler/internal/daemon/CRI"
 
 	"github.com/spf13/cobra"
 )
@@ -30,6 +29,6 @@ var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Show current version of app",
 	Run: func(cmd *cobra.Command, args []string) {
-		daemon.Check()
+		fmt.Print("I want to")
 	},
 }

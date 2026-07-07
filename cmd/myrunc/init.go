@@ -8,25 +8,21 @@ import (
 	"syscall"
 )
 
-// ИЗМЕНИТЬ ПОТОКИ ВВОДА-ВЫВОДА ДЛЯ КОНТЕЙНЕРА ОТДЕЛЬНО, DAEMON прокидывает, а мы будем 
-// хранить все потоки вывода sterr,steout в container.log
-// когда будем открывать через nsenter, потоки родительского основного терминала
-// перейдут к нам, так как мы создадим дочерний процесс внутри нашего изолированного контйенера
-// prepare container and wait run command from daemon
 func execInitContainer(i *execInfo) error {
 	syscall.Sethostname([]byte(i.id))
 
-	err := syscall.Mount("", "/", "", syscall.MS_PRIVATE | syscall.MS_REC, "") // OS cannot check containers mounting
-	if err != nil{
-		return fmt.Errorf("Failed isolated mount: %v",err)
+	err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, "") // OS cannot check containers mounting
+	if err != nil {
+		return fmt.Errorf("Failed isolated mount: %v", err)
 	}
-
 	rootfs := filepath.Join(i.bundlePath, "merged")
-
+	if err = syscall.Mount(rootfs, rootfs, "", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
+		return fmt.Errorf("Failed bind mount rootfs: %v", err)
+	}
 	procPath := filepath.Join(rootfs, "proc")
 	err = os.MkdirAll(procPath, 0755)
-	if err != nil{
-		return fmt.Errorf("Failed create <proc> dir in container: %v",err)
+	if err != nil {
+		return fmt.Errorf("Failed create <proc> dir in container: %v", err)
 	}
 
 	err = syscall.Mount("proc", procPath, "proc", syscall.MS_NOEXEC|syscall.MS_NOSUID|syscall.MS_NODEV, "") // mount proc to container
@@ -36,45 +32,61 @@ func execInitContainer(i *execInfo) error {
 
 	sysPath := filepath.Join(rootfs, "sys")
 	err = os.MkdirAll(sysPath, 0755)
-	if err != nil{
-		return fmt.Errorf("Failed create <sys> dir in container: %v",err)
+	if err != nil {
+		return fmt.Errorf("Failed create <sys> dir in container: %v", err)
 	}
 
-	err = syscall.Mount("sysfs", sysPath, "sysfs", syscall.MS_NOEXEC|syscall.MS_NOSUID|syscall.MS_NODEV|syscall.MS_RDONLY, "") // mount sys ti container
-	if err != nil{
-		return fmt.Errorf("Failed mount sysfs to container: %v",err)
+	err = syscall.Mount("sysfs", sysPath, "sysfs", syscall.MS_NOEXEC|syscall.MS_NOSUID|syscall.MS_NODEV|syscall.MS_RDONLY, "") // mount sys to container
+	if err != nil {
+		return fmt.Errorf("Failed mount sysfs to container: %v", err)
 	}
 
 	pathSend := filepath.Join(os.Getenv("STATE_PATH_MYRUNC"), i.id, os.Getenv("SIGNAL_PIPE"))
 	pathWait := filepath.Join(os.Getenv("STATE_PATH_MYRUNC"), i.id, os.Getenv("GO_PIPE"))
 
-
-	signalPipe, err := os.OpenFile(pathSend, os.O_WRONLY,0)
-	if err != nil{
-		return fmt.Errorf("Failed to open <signal.fifo:%v",err)
+	signalPipe, err := os.OpenFile(pathSend, os.O_WRONLY, 0)
+	if err != nil {
+		return fmt.Errorf("Failed to open <signal.fifo>: %v", err)
 	}
 
-	if err = sendSignal(signalPipe); err != nil{return err}
+	if err = sendSignal(signalPipe); err != nil {
+		return err
+	}
 	defer signalPipe.Close()
 
-	goPipe, err := os.OpenFile(pathWait, os.O_RDONLY,0)
-	if err != nil{
-		return fmt.Errorf("Failde to open <go.fifo>: %v",err)
+	goPipe, err := os.OpenFile(pathWait, os.O_RDONLY, 0)
+	if err != nil {
+		return fmt.Errorf("Failed to open <go.fifo>: %v", err)
 	}
 	defer goPipe.Close()
 
-	if err = waitSignal(goPipe); err != nil{return err}
-	// пересборка потоков ввода / вывода
-	if err = syscall.Chroot(rootfs); err != nil{
-		return fmt.Errorf("Failed chroot file system")
+	if err = waitSignal(goPipe); err != nil {
+		return err
+	}
+
+	oldRoot := filepath.Join(rootfs, ".old_root")
+	if err = os.MkdirAll(oldRoot, 0700); err != nil {
+		return fmt.Errorf("Failed create .old_root dir: %v", err)
+	}
+
+	if err = syscall.PivotRoot(rootfs, oldRoot); err != nil {
+		return fmt.Errorf("Failed pivot_root: %v", err)
 	}
 
 	if err = os.Chdir("/"); err != nil {
-		return fmt.Errorf("Failed chidr file system")
+		return fmt.Errorf("Failed chdir /: %v", err)
+	}
+
+	// физически отрезаем старый (хостовый) root от mount namespace контейнера
+	if err = syscall.Unmount("/.old_root", syscall.MNT_DETACH); err != nil {
+		return fmt.Errorf("Failed unmount old root: %v", err)
+	}
+
+	if err = os.RemoveAll("/.old_root"); err != nil {
+		fmt.Printf("warning: failed to remove /.old_root: %v\n", err)
 	}
 	return mockStartLinux()
 }
-
 
 // send signal to parent process
 func sendSignal(signalPipe *os.File) error{

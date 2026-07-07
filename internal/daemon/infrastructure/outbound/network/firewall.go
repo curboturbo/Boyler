@@ -18,7 +18,7 @@ type FirewallManager interface {
 type firewallManager struct{
 }
 
-func NewFirewallManager () FirewallManager{
+func NewFirewallManager() FirewallManager{
 	return &firewallManager{}
 }
 

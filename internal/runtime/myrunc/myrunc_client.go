@@ -36,14 +36,24 @@ func (r *myRunc) Create(ctx context.Context, id string, bundlePath string) (*run
 }
 
 
-func (r *myRunc) Run(ctx context.Context, id string) error {
+func (r *myRunc) Run(ctx context.Context, id string) (*runtime.State, error) {
 	cmd := exec.CommandContext(ctx, r.binaryPath, "run", id, "--bundle", "absBundlePath")
 	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil{
-		return fmt.Errorf("Failed to run container: %w", err)
+	stdout, _ := cmd.StdoutPipe()
+
+	if err := cmd.Start(); err != nil{
+		return &runtime.State{}, fmt.Errorf("Failed to run container: %w", err)
 	}
-	return nil
+
+	var containerState runtime.State
+	if err := json.NewDecoder(stdout).Decode(&containerState); err != nil {
+		return &runtime.State{}, fmt.Errorf("Failed to decode struct: %w", err)
+	}
+	
+	if err := cmd.Wait(); err != nil {
+		return &runtime.State{}, fmt.Errorf("Unknown error during execution: %w", err)
+	}
+	return &containerState, nil
 }
 
 

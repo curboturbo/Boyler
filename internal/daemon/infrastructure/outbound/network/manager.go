@@ -2,17 +2,19 @@ package network
 
 import (
 	"fmt"
+	stdnet "net"
 	"os"
 	"os/exec"
-	stdnet "net"
+	"runtime"
+
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 )
 
 
 type Config struct {
-	eth0 string
-	forward string
+	Eth0 string
+	Forward string
 }
 
 // the manager who sets up the network for containers
@@ -84,7 +86,7 @@ func (net *networkManager) CreateVethPair(contanerPID int, vethName string) erro
 
 	la := netlink.NewLinkAttrs()
 	la.Name = vethName
-	peerVethName := net.config.eth0
+	peerVethName := net.config.Eth0
 	veth := &netlink.Veth{LinkAttrs: la, PeerName: peerVethName} 
 
 	if err := netlink.LinkAdd(veth); err != nil {
@@ -132,70 +134,149 @@ func (net *networkManager) BindVethToBridge(vethName string, bridgeName string) 
 
 
 // ip format - x.x.x.x/y
-func (net *networkManager) SetupContainerNetwork(containerPID int,vethName string, ipAddress string, bridgeName string, bridgeIP string) error {
-	peerVethName := net.config.eth0
-	hostNetNamespace, err := netns.Get()
-	if err != nil{
-		return fmt.Errorf("Failed get host-thread namespaces: %v", err)
-	}
-	defer hostNetNamespace.Close()
+//func (net *networkManager) SetupContainerNetwork(containerPID int,vethName string, ipAddress string, bridgeName string, bridgeIP string) error {
+//	runtime.LockOSThread()
+//	defer runtime.UnlockOSThread()
+//	peerVethName := net.config.Eth0
+//	hostNetNamespace, err := netns.Get()
+//	if err != nil{
+//		return fmt.Errorf("Failed get host-thread namespaces: %v", err)
+//	}
+//	defer hostNetNamespace.Close()
+//
+//	containerNetNamespace, err := netns.GetFromPid(containerPID)
+//	if err != nil{
+//		return fmt.Errorf("Failed get container-thread namespces: %v", err)
+//	}
+//	defer containerNetNamespace.Close()
+//
+//	if err = netns.Set(containerNetNamespace); err != nil{
+//		return fmt.Errorf("Failed to set host to container net namespace: %v", err)
+//	}
+//	defer netns.Set(hostNetNamespace) // возврат к хостовому сетевому пространтсву
+//
+//	link, err := netlink.LinkByName(peerVethName)
+//	if err != nil{
+//		return fmt.Errorf("Failed to find %s in conrainer: %v", peerVethName, err)
+//	}
+//	addr, err := netlink.ParseAddr(ipAddress)
+//	if err != nil{
+//		return fmt.Errorf("Failed to parse ip %s : %v",ipAddress, err)
+//	}
+//	err = netlink.AddrAdd(link, addr)
+//	if err != nil{
+//		return fmt.Errorf("Failed add ip-address to veth-pair: %v", err)
+//	}
+//	err = netlink.LinkSetUp(link)
+//	if err != nil{
+//		return fmt.Errorf("Failed to set up veth: %v", err)
+//	}
+//
+//	localHost, err := netlink.LinkByName("lo")
+//	if err == nil{
+//		netlink.LinkSetUp(localHost)
+//	}
+//
+//	gatewayIP, _, err := stdnet.ParseCIDR(bridgeIP)
+//	if err != nil {
+//		gatewayIP = stdnet.ParseIP(bridgeIP)
+//		if gatewayIP == nil {
+//			return fmt.Errorf("invalid bridge IP format for gateway: %s", bridgeIP)
+//		}
+//	}
+//
+//	route := &netlink.Route{
+//		Scope:     netlink.SCOPE_UNIVERSE,
+//		LinkIndex: link.Attrs().Index,
+//		Gw:        gatewayIP,
+//	}
+//
+//	if err = netlink.RouteAdd(route); err != nil{
+//		return fmt.Errorf("Failed to update router s rules: %v", err)
+//	}
+//
+//	return nil
+//}
+//
+func (net *networkManager) SetupContainerNetwork(containerPID int, vethName string, ipAddress string, bridgeName string, bridgeIP string) error {
+    runtime.LockOSThread()
+    defer runtime.UnlockOSThread()
 
-	containerNetNamespace, err := netns.GetFromPid(containerPID)
-	if err != nil{
-		return fmt.Errorf("Failed get container-thread namespces: %v", err)
-	}
-	defer containerNetNamespace.Close()
+    // Получаем дескриптор пространства контейнера
+    containerNetNamespace, err := netns.GetFromPid(containerPID)
+    if err != nil {
+        return fmt.Errorf("Failed get container namespace: %v", err)
+    }
+    defer containerNetNamespace.Close()
 
-	if err = netns.Set(containerNetNamespace); err != nil{
-		return fmt.Errorf("Failed to set host to container net namespace: %v", err)
-	}
-	defer netns.Set(hostNetNamespace) // возврат к хостовому сетевому пространтсву
+    // СОЗДАЕМ ЯВНЫЙ HANDLE ДЛЯ NETLINK ВНУТРИ КОНТЕЙНЕРА
+    handle, err := netlink.NewHandleAt(containerNetNamespace)
+    if err != nil {
+        return fmt.Errorf("Failed to create netlink handle for container: %v", err)
+    }
+    defer handle.Close() // Обязательно закрываем handle!
 
-	link, err := netlink.LinkByName(peerVethName)
-	if err != nil{
-		return fmt.Errorf("Failed to find %s in conrainer: %v", peerVethName, err)
-	}
-	addr, err := netlink.ParseAddr(ipAddress)
-	if err != nil{
-		return fmt.Errorf("Failed to parse ip %s : %v",ipAddress, err)
-	}
-	err = netlink.AddrAdd(link, addr)
-	if err != nil{
-		return fmt.Errorf("Failed add ip-address to veth-pair: %v", err)
-	}
-	err = netlink.LinkSetUp(link)
-	if err != nil{
-		return fmt.Errorf("Failed to set up veth: %v", err)
-	}
+    // Теперь ВСЕ операции делаем НЕ через netlink.Вызов(), а через handle.Вызов()
 
-	localHost, err := netlink.LinkByName("lo")
-	if err == nil{
-		netlink.LinkSetUp(localHost)
-	}
+    peerVethName := net.config.Eth0
+    
+    // Ищем интерфейс внутри контейнера через handle
+    link, err := handle.LinkByName(peerVethName)
+    if err != nil {
+        return fmt.Errorf("Failed to find %s in container: %v", peerVethName, err)
+    }
 
-	gatewayIP, _, err := stdnet.ParseCIDR(bridgeIP)
-	if err != nil {
-		gatewayIP = stdnet.ParseIP(bridgeIP)
-		if gatewayIP == nil {
-			return fmt.Errorf("invalid bridge IP format for gateway: %s", bridgeIP)
-		}
-	}
+    addr, err := netlink.ParseAddr(ipAddress)
+    if err != nil {
+        return fmt.Errorf("Failed to parse ip %s : %v", ipAddress, err)
+    }
 
-	route := &netlink.Route{
-		Scope:     netlink.SCOPE_UNIVERSE,
-		LinkIndex: link.Attrs().Index,
-		Gw:        gatewayIP,
-	}
+    // Добавляем адрес через handle
+    if err = handle.AddrAdd(link, addr); err != nil {
+        return fmt.Errorf("Failed add ip-address to veth-pair: %v", err)
+    }
 
-	if err = netlink.RouteAdd(route); err != nil{
-		return fmt.Errorf("Failed to update router s rules: %v", err)
-	}
+    // Поднимаем veth через handle
+    if err = handle.LinkSetUp(link); err != nil {
+        return fmt.Errorf("Failed to set up veth: %v", err)
+    }
 
-	return nil
+    // Поднимаем lo (петлю) через handle
+    if localHost, err := handle.LinkByName("lo"); err == nil {
+        handle.LinkSetUp(localHost)
+    }
+
+    // Парсим шлюз
+    gatewayIP, _, err := stdnet.ParseCIDR(bridgeIP)
+    if err != nil {
+        gatewayIP = stdnet.ParseIP(bridgeIP)
+        if gatewayIP == nil {
+            return fmt.Errorf("invalid bridge IP format for gateway: %s", bridgeIP)
+        }
+    }
+
+    // Создаем маршрут
+    route := &netlink.Route{
+        Scope:     netlink.SCOPE_UNIVERSE,
+        LinkIndex: link.Attrs().Index,
+        Gw:        gatewayIP,
+    }
+
+    // Добавляем маршрут СТРОГО через handle контейнера
+    if err = handle.RouteAdd(route); err != nil {
+        return fmt.Errorf("Failed to update router rules inside container: %v", err)
+    }
+
+    return nil
 }
 
+
+
+
+
+
 func (net *networkManager) BridgeOpen(internalNetwork string, bridgeName string) error {
-	if err := os.WriteFile(net.config.forward, []byte("1\n"), 0644); err !=nil{
+	if err := os.WriteFile(net.config.Forward, []byte("1\n"), 0644); err !=nil{
 		return fmt.Errorf("Failed enable ip-forwarding: %v",err)
 	}
 	cmd := exec.Command("iptables", "-t", "nat", "-A", "POSTROUTING", "-s", internalNetwork, "!", "-o", bridgeName, "-j", "MASQUERADE")
