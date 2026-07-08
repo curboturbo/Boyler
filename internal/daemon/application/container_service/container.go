@@ -1,18 +1,18 @@
 package application
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
+	"path/filepath"
+
 	net "boyler/internal/daemon/application/network_service"
 	core "boyler/internal/daemon/core"
 	layer "boyler/internal/daemon/infrastructure/outbound/image"
 	overlay "boyler/internal/daemon/infrastructure/outbound/overlay"
 	registry "boyler/internal/daemon/infrastructure/outbound/registry"
 	run "boyler/internal/runtime"
-	"context"
-	"fmt"
-	"log/slog"
-	"os"
-	"path/filepath"
-
+	logger "boyler/pkg/logger"
 	//"github.com/google/uuid"
 )
 
@@ -52,7 +52,7 @@ func NewContainerService(
 		images: images,
 		network: network,
 		reg: reg,
-		logger: slog.New(slog.NewTextHandler(os.Stdout,nil)),
+		logger: logger.InitLogger(false),
 	}
 }
 
@@ -64,13 +64,13 @@ func (c *containerService) CreateAndStart(ctx context.Context, container core.Co
 
 	unpackDir := "/home/tema/Boyler/lib/images/alpine/rootfs"
 
-	c.images.Extract("alpine",unpackDir)
+	c.images.Extract(ctx, "alpine",unpackDir)
 
-	if err := c.fs.CreateMountPoints(container.ID); err != nil {
+	if err := c.fs.CreateMountPoints(ctx, container.ID); err != nil {
 		return fmt.Errorf("Failed prepare filesystem container: %v", err)
 	}
-	c.logger.Debug(fmt.Sprintf("image %v extracted",container.ImageID))
-	if err := c.fs.Mount(container.ID, container.ImageID); err != nil {
+	// c.logger.Debug(fmt.Sprintf("image %v extracted",container.ImageID))
+	if err := c.fs.Mount(ctx, container.ID, container.ImageID); err != nil {
 		return fmt.Errorf("Failed mount filesystem container: %v", err)
 	}
 
@@ -87,16 +87,16 @@ func (c *containerService) CreateAndStart(ctx context.Context, container core.Co
 	var pid int
 	fmt.Scanln(&pid)
 
-	err = c.network.InitHostNetwork()
+	err = c.network.InitHostNetwork(ctx)
 	if err != nil{
 		return fmt.Errorf("Bridge error: %v", err)
 	}
 
-	fmt.Printf("Bridge has done\n")
-	if err = c.network.ConnectContainer(container.ID, pid); err != nil{
+	//fmt.Printf("Bridge has done\n")
+	if err = c.network.ConnectContainer(ctx, container.ID, pid); err != nil{
 		return fmt.Errorf("Connect container  error: %v", err)
 	}
-	fmt.Print("Container connected")
+	//fmt.Print("Container connected")
 	
 	state, err = c.runtime.Run(ctx, container.ID)
 	if err != nil{

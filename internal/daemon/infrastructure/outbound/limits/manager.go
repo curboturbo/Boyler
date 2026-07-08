@@ -2,16 +2,19 @@ package limits
 
 import (
 	"boyler/internal/daemon/core"
+	"boyler/pkg/logger"
+	"context"
 	"fmt"
+
 	"github.com/containerd/cgroups/v3/cgroup2"
 )
 
 
 type ResourcesContainerManager interface {
 	GroupOperator
-	Apply(pid uint64) error
-    Delete(pid uint64) error
-	Update(res *core.Restriction) error
+	Apply(ctx context.Context, pid uint64) error
+    Delete(ctx context.Context, pid uint64) error
+	Update(ctx context.Context, res *core.Restriction) error
 }
 
 // unique struct for each container
@@ -49,16 +52,21 @@ func (c *resourcesContainerManager) createCgroupManager(res *core.Restriction, c
 }
 
 
-func (c *resourcesContainerManager) Apply(pid uint64) error {
+func (c *resourcesContainerManager) Apply(ctx context.Context, pid uint64) error {
+	log := logger.FromContext(ctx)
+	log.Debug("start appliying parametrs to pid","pid",pid)
 	err := c.lowLevelManager.AddProc(pid)
 	if err != nil{
 		return fmt.Errorf("Failed to add %d to cgropu: %v",pid, err)
 	}
+	log.Info("parametrs applied")
 	return nil
 }
 
 // systemPath = "/sys/fs/cgroup"
-func (c *resourcesContainerManager) Delete(pid uint64) error {
+func (c *resourcesContainerManager) Delete(ctx context.Context, pid uint64) error {
+	log := logger.FromContext(ctx)
+	log.Debug("start delete parametrs to pid","pid",pid)
 	rootMgr, err := cgroup2.NewManager(c.systemPath, "/", nil)
 	if err != nil {
 		return fmt.Errorf("Failed to connect to root cgroup: %w", err)
@@ -66,16 +74,20 @@ func (c *resourcesContainerManager) Delete(pid uint64) error {
 	if err := rootMgr.AddProc(pid); err != nil{
 		return fmt.Errorf("Failed to add pid to root cgroups: %v",err)
 	}
+	log.Info("cgroups deleted")
 	return nil
 }
 
 
-func (c *resourcesContainerManager) Update(res *core.Restriction) error{
+func (c *resourcesContainerManager) Update(ctx context.Context, res *core.Restriction) error{
+	log := logger.FromContext(ctx)
+	log.Debug("start cgroups update")
 	resources := mapResources(res)
 	err := c.lowLevelManager.Update(resources)
 	if err != nil{
 		return fmt.Errorf("Failed to update cgroups data: %v",err)
 	}
+	log.Info("changind applied")
 	return nil
 }
 

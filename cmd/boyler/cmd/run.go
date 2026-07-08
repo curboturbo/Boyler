@@ -13,7 +13,6 @@ import (
 	"fmt"
 
 	//"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -29,13 +28,8 @@ var runCmd = &cobra.Command{
 	Short: "Run container",
 	Long: "Run container from loaded images or pull from DockerHub",
 	Run: func(cmd *cobra.Command, args []string) {
-		handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-		})
-		logger := slog.New(handler)
 		wd, err := os.Getwd()
 		if err != nil {
-			logger.Error("Failed to get working directory", "error", err)
 			return
 		}
 
@@ -54,9 +48,9 @@ var runCmd = &cobra.Command{
 		b := 1
 		if a<b{}else{
 
-		im := layer.NewImageManager(imagesPath, logger)
+		im := layer.NewImageManager(imagesPath)
 		ru := r.NewMyRunc(runtimeBinPath)
-		fs := overlay.NewOverlayManager(imagesPath, containersPath,logger)
+		fs := overlay.NewOverlayManager(imagesPath, containersPath)
 
 		config := net_manager.Config{
 			Eth0: os.Getenv("DEFAULT_ETH0"),
@@ -70,7 +64,7 @@ var runCmd = &cobra.Command{
 			InternalNetwork: os.Getenv("CONTAINER_LOCAL_NETWORK"),
 		}
 		reg := registry.NewRepo()
-		network := net.NewNetworkService(network_manager,network_service_config)
+		network, _ := net.NewNetworkService(network_manager,network_service_config)
 		daemon := daemon.NewContainerService(
 			ru,
 			fs,

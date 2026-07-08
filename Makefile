@@ -26,7 +26,7 @@ run:
 .PHONY: cond
 cond:
 	sudo lsns -p 123 # показывает namespaces конекртногоо PID
-	sudo nsenter -t 82050 -m -u -i -n -p /bin/sh # выбрасывает в терминал контйенра по PID
+	sudo nsenter -t 23506 -m -u -i -n -p -r -w /bin/sh # выбрасывает в терминал контйенра по PID
 	# заставляет отрыть bash в namepaces процесса
 
 

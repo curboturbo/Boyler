@@ -6,7 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-
+	"context"
+	"boyler/pkg/logger"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 )
@@ -20,23 +21,25 @@ type Config struct {
 // the manager who sets up the network for containers
 type NetworkManager interface{
 	// create virtual network interface
-	SetUpBridge(bridgeName string, bridgeIp string) error
+	SetUpBridge(ctx context.Context, bridgeName string, bridgeIp string) error
 	// create virtual veth pair for container and bridge
-	CreateVethPair(containerPID int, vethName string) error
+	CreateVethPair(ctx context.Context, containerPID int, vethName string) error
 	// connect veth pair to bridge
-	BindVethToBridge(vethName string, bridgeName string) error
+	BindVethToBridge(ctx context.Context, vethName string, bridgeName string) error
 	// set up nat in host machine
-	BridgeOpen(internalNetwork string, bridgeName string) error
+	BridgeOpen(ctx context.Context, internalNetwork string, bridgeName string) error
 	// setup all contianer network
-	SetupContainerNetwork(containerPID int, vethName string, ipAddress string, bridgeName string, bridgeIP string) error
+	SetupContainerNetwork(ctx context.Context, containerPID int, vethName string, ipAddress string, bridgeName string, bridgeIP string) error
+
+	// TearDownContainerNetwork()
 	// show veth
 	ShowVeth() []string
-	// create isolation
-	CreateIsolation(ipAddress string, bridgeName string) error
+	// create isolation (dont delete real L2 connection, for delete veth-pair using)
+	CreateIsolation(ctx context.Context, ipAddress string, bridgeName string) error
 	// restore isolation
-	RestoreIsolation(ipAddress string, bridgeName string) error 
+	RestoreIsolation(ctx context.Context, ipAddress string, bridgeName string) error 
 	// forward port
-	ForwardPort(hostPort string, containerPort string,ipAddres string, bridgeName string) error
+	ForwardPort(ctx context.Context, hostPort string, containerPort string,ipAddres string, bridgeName string) error
 }
 
 
@@ -54,7 +57,9 @@ func NewNetworkManager(config Config) NetworkManager{
 }
 
 
-func (net *networkManager) SetUpBridge(bridgeName string, bridgeIP string) error {
+func (net *networkManager) SetUpBridge(ctx context.Context, bridgeName string, bridgeIP string) error {
+	log := logger.FromContext(ctx)
+	log.Debug("start setup l2/l3 bridge")
 	_, err := netlink.LinkByName(bridgeName)
 	if err == nil{
 		return fmt.Errorf("Failed bridge has already done: %v", err)
@@ -73,13 +78,17 @@ func (net *networkManager) SetUpBridge(bridgeName string, bridgeIP string) error
 	if err := netlink.AddrAdd(bridge, addr); err != nil {
 		return fmt.Errorf("Failed to add IP %s to bridge %s: %w", bridgeIP, bridgeName, err)
 	}
+	log.Debug("setup created bridge")
 	if err = netlink.LinkSetUp(bridge); err != nil{
 		return fmt.Errorf("Failed to set up bridge: %v", err)
 	}
+	log.Info("bridge done")
 	return nil
 }
 
-func (net *networkManager) CreateVethPair(contanerPID int, vethName string) error {
+func (net *networkManager) CreateVethPair(ctx context.Context, contanerPID int, vethName string) error {
+	log := logger.FromContext(ctx)
+	log.Debug("start creating veth pair for bridge and containers")
 	if _, err := netlink.LinkByName(vethName); err == nil {
 		return fmt.Errorf("Failed: veth %s already exists", vethName)
 	}
@@ -113,11 +122,14 @@ func (net *networkManager) CreateVethPair(contanerPID int, vethName string) erro
 		return fmt.Errorf("Failed to set up host veth %s: %w", vethName, err)
 	}
 	net.createdVeths = append(net.createdVeths, vethName)
+	log.Info("veth-pair done")
 	return nil
 }
 
 
-func (net *networkManager) BindVethToBridge(vethName string, bridgeName string) error {
+func (net *networkManager) BindVethToBridge(ctx context.Context, vethName string, bridgeName string) error {
+	log  := logger.FromContext(ctx)
+	log.Debug("start attaching veth and bridge")
 	bridge, err := netlink.LinkByName(bridgeName)
 	if err != nil {
 		return fmt.Errorf("Failed find %v : %v", bridgeName, err)
@@ -129,98 +141,32 @@ func (net *networkManager) BindVethToBridge(vethName string, bridgeName string) 
 	if err = netlink.LinkSetMaster(hostVeth, bridge); err != nil{
 		return fmt.Errorf("Failed to connect %v to bridge %v : %v", vethName, bridge, err)
 	}
+	log.Info("binding done")
 	return nil
 }
 
 
-// ip format - x.x.x.x/y
-//func (net *networkManager) SetupContainerNetwork(containerPID int,vethName string, ipAddress string, bridgeName string, bridgeIP string) error {
-//	runtime.LockOSThread()
-//	defer runtime.UnlockOSThread()
-//	peerVethName := net.config.Eth0
-//	hostNetNamespace, err := netns.Get()
-//	if err != nil{
-//		return fmt.Errorf("Failed get host-thread namespaces: %v", err)
-//	}
-//	defer hostNetNamespace.Close()
-//
-//	containerNetNamespace, err := netns.GetFromPid(containerPID)
-//	if err != nil{
-//		return fmt.Errorf("Failed get container-thread namespces: %v", err)
-//	}
-//	defer containerNetNamespace.Close()
-//
-//	if err = netns.Set(containerNetNamespace); err != nil{
-//		return fmt.Errorf("Failed to set host to container net namespace: %v", err)
-//	}
-//	defer netns.Set(hostNetNamespace) // возврат к хостовому сетевому пространтсву
-//
-//	link, err := netlink.LinkByName(peerVethName)
-//	if err != nil{
-//		return fmt.Errorf("Failed to find %s in conrainer: %v", peerVethName, err)
-//	}
-//	addr, err := netlink.ParseAddr(ipAddress)
-//	if err != nil{
-//		return fmt.Errorf("Failed to parse ip %s : %v",ipAddress, err)
-//	}
-//	err = netlink.AddrAdd(link, addr)
-//	if err != nil{
-//		return fmt.Errorf("Failed add ip-address to veth-pair: %v", err)
-//	}
-//	err = netlink.LinkSetUp(link)
-//	if err != nil{
-//		return fmt.Errorf("Failed to set up veth: %v", err)
-//	}
-//
-//	localHost, err := netlink.LinkByName("lo")
-//	if err == nil{
-//		netlink.LinkSetUp(localHost)
-//	}
-//
-//	gatewayIP, _, err := stdnet.ParseCIDR(bridgeIP)
-//	if err != nil {
-//		gatewayIP = stdnet.ParseIP(bridgeIP)
-//		if gatewayIP == nil {
-//			return fmt.Errorf("invalid bridge IP format for gateway: %s", bridgeIP)
-//		}
-//	}
-//
-//	route := &netlink.Route{
-//		Scope:     netlink.SCOPE_UNIVERSE,
-//		LinkIndex: link.Attrs().Index,
-//		Gw:        gatewayIP,
-//	}
-//
-//	if err = netlink.RouteAdd(route); err != nil{
-//		return fmt.Errorf("Failed to update router s rules: %v", err)
-//	}
-//
-//	return nil
-//}
-//
-func (net *networkManager) SetupContainerNetwork(containerPID int, vethName string, ipAddress string, bridgeName string, bridgeIP string) error {
+func (net *networkManager) SetupContainerNetwork(ctx context.Context, containerPID int, vethName string, ipAddress string, bridgeName string, bridgeIP string) error {
+	log := logger.FromContext(ctx)
+	log.Debug("start initialization network in container")
+	log.Debug("lock all goroutines in thread, for exclude planner error")
     runtime.LockOSThread()
     defer runtime.UnlockOSThread()
 
-    // Получаем дескриптор пространства контейнера
     containerNetNamespace, err := netns.GetFromPid(containerPID)
     if err != nil {
         return fmt.Errorf("Failed get container namespace: %v", err)
     }
     defer containerNetNamespace.Close()
+	log.Debug("switch thread namespace")
 
-    // СОЗДАЕМ ЯВНЫЙ HANDLE ДЛЯ NETLINK ВНУТРИ КОНТЕЙНЕРА
     handle, err := netlink.NewHandleAt(containerNetNamespace)
     if err != nil {
         return fmt.Errorf("Failed to create netlink handle for container: %v", err)
     }
-    defer handle.Close() // Обязательно закрываем handle!
-
-    // Теперь ВСЕ операции делаем НЕ через netlink.Вызов(), а через handle.Вызов()
-
+    defer handle.Close()
     peerVethName := net.config.Eth0
     
-    // Ищем интерфейс внутри контейнера через handle
     link, err := handle.LinkByName(peerVethName)
     if err != nil {
         return fmt.Errorf("Failed to find %s in container: %v", peerVethName, err)
@@ -231,22 +177,18 @@ func (net *networkManager) SetupContainerNetwork(containerPID int, vethName stri
         return fmt.Errorf("Failed to parse ip %s : %v", ipAddress, err)
     }
 
-    // Добавляем адрес через handle
     if err = handle.AddrAdd(link, addr); err != nil {
         return fmt.Errorf("Failed add ip-address to veth-pair: %v", err)
     }
 
-    // Поднимаем veth через handle
     if err = handle.LinkSetUp(link); err != nil {
         return fmt.Errorf("Failed to set up veth: %v", err)
     }
 
-    // Поднимаем lo (петлю) через handle
     if localHost, err := handle.LinkByName("lo"); err == nil {
         handle.LinkSetUp(localHost)
     }
 
-    // Парсим шлюз
     gatewayIP, _, err := stdnet.ParseCIDR(bridgeIP)
     if err != nil {
         gatewayIP = stdnet.ParseIP(bridgeIP)
@@ -254,28 +196,23 @@ func (net *networkManager) SetupContainerNetwork(containerPID int, vethName stri
             return fmt.Errorf("invalid bridge IP format for gateway: %s", bridgeIP)
         }
     }
-
-    // Создаем маршрут
+	log.Debug("add route in routing-table")
     route := &netlink.Route{
         Scope:     netlink.SCOPE_UNIVERSE,
         LinkIndex: link.Attrs().Index,
         Gw:        gatewayIP,
     }
-
-    // Добавляем маршрут СТРОГО через handle контейнера
     if err = handle.RouteAdd(route); err != nil {
         return fmt.Errorf("Failed to update router rules inside container: %v", err)
     }
+	log.Info("network in container done")
 
     return nil
 }
 
-
-
-
-
-
-func (net *networkManager) BridgeOpen(internalNetwork string, bridgeName string) error {
+func (net *networkManager) BridgeOpen(ctx context.Context, internalNetwork string, bridgeName string) error {
+	log := logger.FromContext(ctx)
+	log.Debug("start opening bridge")
 	if err := os.WriteFile(net.config.Forward, []byte("1\n"), 0644); err !=nil{
 		return fmt.Errorf("Failed enable ip-forwarding: %v",err)
 	}
@@ -283,6 +220,7 @@ func (net *networkManager) BridgeOpen(internalNetwork string, bridgeName string)
     if err := cmd.Run(); err != nil{
 		return fmt.Errorf("Failed enable masquerade with host: %v",err)
 	}
+	log.Info("bridge opened")
 	return nil	
 }
 
@@ -292,14 +230,20 @@ func (net *networkManager) ShowVeth() []string{
 }
 
 
-func (net *networkManager) CreateIsolation(ipAddress string, bridgeName string) error {
+func (net *networkManager) CreateIsolation(ctx context.Context, ipAddress string, bridgeName string) error {
+	log := logger.FromContext(ctx)
+	log.Info("start container isolation")
 	return net.firewall.Isolate(ipAddress, bridgeName)
 }
 
-func (net *networkManager) RestoreIsolation(ipAddress string, bridgeName string) error {
+func (net *networkManager) RestoreIsolation(ctx context.Context, ipAddress string, bridgeName string) error {
+	log := logger.FromContext(ctx)
+	log.Info("start container isolation")
 	return net.firewall.CancelIsolation(ipAddress, bridgeName)
 }
 
-func (net *networkManager) ForwardPort(hostPort string, containerPort string,ipAddres string,bridgeName string) error {
+func (net *networkManager) ForwardPort(ctx context.Context, hostPort string, containerPort string,ipAddres string,bridgeName string) error {
+	log := logger.FromContext(ctx)
+	log.Info("start container isolation")
 	return net.firewall.Forward(hostPort, containerPort, ipAddres,bridgeName)
 }
