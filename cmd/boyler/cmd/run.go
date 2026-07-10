@@ -64,6 +64,7 @@ var runCmd = &cobra.Command{
 			InternalNetwork: os.Getenv("CONTAINER_LOCAL_NETWORK"),
 		}
 		reg := registry.NewRepo()
+
 		network, _ := net.NewNetworkService(network_manager,network_service_config)
 		daemon := daemon.NewContainerService(
 			ru,

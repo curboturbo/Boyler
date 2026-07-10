@@ -32,14 +32,14 @@ type ContainerNetInfo struct {
 
 type networkService struct {
 	mu             sync.Mutex
-	manager net.NetworkManager
+	manager net.NetworkInfrastructureManager
 	config         NetworkServiceConfig
 	containerNet map[string]ContainerNetInfo
 	ipPool []byte
 }
 
 
-func NewNetworkService(manager net.NetworkManager, config NetworkServiceConfig) (NetworkService, error) {
+func NewNetworkService(manager net.NetworkInfrastructureManager, config NetworkServiceConfig) (NetworkService, error) {
 	subNetSize, err := UsableHosts(config.InternalNetwork)
 	if err != nil || subNetSize == 0{
 		return nil, fmt.Errorf("Invalid network")

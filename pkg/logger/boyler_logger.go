@@ -19,7 +19,7 @@ func InitLogger(isJSON bool) *slog.Logger{
 	case false:
 		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 			AddSource: true,
-			Level: slog.LevelInfo,
+			Level: slog.LevelDebug,
 		})
 	}
 	logger := slog.New(handler)

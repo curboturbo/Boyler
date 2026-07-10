@@ -19,9 +19,11 @@ type Config struct {
 }
 
 // the manager who sets up the network for containers
-type NetworkManager interface{
+type NetworkInfrastructureManager interface{
 	// create virtual network interface
 	SetUpBridge(ctx context.Context, bridgeName string, bridgeIp string) error
+	// delete bridge
+	DeleteBridge(ctx context.Context, bridgeName string) error
 	// create virtual veth pair for container and bridge
 	CreateVethPair(ctx context.Context, containerPID int, vethName string) error
 	// connect veth pair to bridge
@@ -30,8 +32,6 @@ type NetworkManager interface{
 	BridgeOpen(ctx context.Context, internalNetwork string, bridgeName string) error
 	// setup all contianer network
 	SetupContainerNetwork(ctx context.Context, containerPID int, vethName string, ipAddress string, bridgeName string, bridgeIP string) error
-
-	// TearDownContainerNetwork()
 	// show veth
 	ShowVeth() []string
 	// create isolation (dont delete real L2 connection, for delete veth-pair using)
@@ -43,21 +43,21 @@ type NetworkManager interface{
 }
 
 
-type networkManager struct{
+type networkInfrastructureManager struct{
 	createdVeths []string
 	config Config
 	firewall FirewallManager
 }
 
 
-func NewNetworkManager(config Config) NetworkManager{
+func NewNetworkManager(config Config) NetworkInfrastructureManager{
 	createdVeths := []string{}
 	firewall := NewFirewallManager()
-	return &networkManager{createdVeths: createdVeths, config: config, firewall: firewall}
+	return &networkInfrastructureManager{createdVeths: createdVeths, config: config, firewall: firewall}
 }
 
 
-func (net *networkManager) SetUpBridge(ctx context.Context, bridgeName string, bridgeIP string) error {
+func (net *networkInfrastructureManager) SetUpBridge(ctx context.Context, bridgeName string, bridgeIP string) error {
 	log := logger.FromContext(ctx)
 	log.Debug("start setup l2/l3 bridge")
 	_, err := netlink.LinkByName(bridgeName)
@@ -86,7 +86,7 @@ func (net *networkManager) SetUpBridge(ctx context.Context, bridgeName string, b
 	return nil
 }
 
-func (net *networkManager) CreateVethPair(ctx context.Context, contanerPID int, vethName string) error {
+func (net *networkInfrastructureManager) CreateVethPair(ctx context.Context, contanerPID int, vethName string) error {
 	log := logger.FromContext(ctx)
 	log.Debug("start creating veth pair for bridge and containers")
 	if _, err := netlink.LinkByName(vethName); err == nil {
@@ -127,7 +127,7 @@ func (net *networkManager) CreateVethPair(ctx context.Context, contanerPID int, 
 }
 
 
-func (net *networkManager) BindVethToBridge(ctx context.Context, vethName string, bridgeName string) error {
+func (net *networkInfrastructureManager) BindVethToBridge(ctx context.Context, vethName string, bridgeName string) error {
 	log  := logger.FromContext(ctx)
 	log.Debug("start attaching veth and bridge")
 	bridge, err := netlink.LinkByName(bridgeName)
@@ -146,7 +146,7 @@ func (net *networkManager) BindVethToBridge(ctx context.Context, vethName string
 }
 
 
-func (net *networkManager) SetupContainerNetwork(ctx context.Context, containerPID int, vethName string, ipAddress string, bridgeName string, bridgeIP string) error {
+func (net *networkInfrastructureManager) SetupContainerNetwork(ctx context.Context, containerPID int, vethName string, ipAddress string, bridgeName string, bridgeIP string) error {
 	log := logger.FromContext(ctx)
 	log.Debug("start initialization network in container")
 	log.Debug("lock all goroutines in thread, for exclude planner error")
@@ -210,7 +210,35 @@ func (net *networkManager) SetupContainerNetwork(ctx context.Context, containerP
     return nil
 }
 
-func (net *networkManager) BridgeOpen(ctx context.Context, internalNetwork string, bridgeName string) error {
+
+func (net *networkInfrastructureManager) DeleteBridge(ctx context.Context, bridgeName string) error {
+	log := logger.FromContext(ctx)
+	log.Debug("start delete bridge","bridge_name", bridgeName)
+	link, err := netlink.LinkByName(bridgeName)
+	if err != nil{
+		return fmt.Errorf("Failed to find bridge: %v", err)
+	}
+	bridgeInd := link.Attrs().Index
+	allLink, err := netlink.LinkList()
+	if err != nil{
+		return fmt.Errorf("Failed to show ip links: %v",err)
+	}
+	count := 0
+	for _, l := range allLink{
+		if l.Attrs().MasterIndex == bridgeInd && l.Type() == "veth"{count+=1}
+	}
+	if count != 0{
+		return fmt.Errorf("Failed to delete bridge: attach %d veth",count)
+	}else{
+		if err = netlink.LinkDel(link); err != nil{
+			return fmt.Errorf("Failed to delete bridge: %v", err)
+		}
+	}
+	log.Info("bridge deleted")
+	return nil
+}
+
+func (net *networkInfrastructureManager) BridgeOpen(ctx context.Context, internalNetwork string, bridgeName string) error {
 	log := logger.FromContext(ctx)
 	log.Debug("start opening bridge")
 	if err := os.WriteFile(net.config.Forward, []byte("1\n"), 0644); err !=nil{
@@ -225,24 +253,24 @@ func (net *networkManager) BridgeOpen(ctx context.Context, internalNetwork strin
 }
 
 
-func (net *networkManager) ShowVeth() []string{
+func (net *networkInfrastructureManager) ShowVeth() []string{
 	return net.createdVeths
 }
 
 
-func (net *networkManager) CreateIsolation(ctx context.Context, ipAddress string, bridgeName string) error {
+func (net *networkInfrastructureManager) CreateIsolation(ctx context.Context, ipAddress string, bridgeName string) error {
 	log := logger.FromContext(ctx)
 	log.Info("start container isolation")
 	return net.firewall.Isolate(ipAddress, bridgeName)
 }
 
-func (net *networkManager) RestoreIsolation(ctx context.Context, ipAddress string, bridgeName string) error {
+func (net *networkInfrastructureManager) RestoreIsolation(ctx context.Context, ipAddress string, bridgeName string) error {
 	log := logger.FromContext(ctx)
 	log.Info("start container isolation")
 	return net.firewall.CancelIsolation(ipAddress, bridgeName)
 }
 
-func (net *networkManager) ForwardPort(ctx context.Context, hostPort string, containerPort string,ipAddres string,bridgeName string) error {
+func (net *networkInfrastructureManager) ForwardPort(ctx context.Context, hostPort string, containerPort string,ipAddres string,bridgeName string) error {
 	log := logger.FromContext(ctx)
 	log.Info("start container isolation")
 	return net.firewall.Forward(hostPort, containerPort, ipAddres,bridgeName)
