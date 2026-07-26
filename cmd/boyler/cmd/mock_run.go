@@ -1,13 +1,12 @@
 package cmd
 
 import (
-	daemon "boyler/internal/daemon/application/container_service"
+	service "boyler/internal/daemon/application/container_service"
 	net "boyler/internal/daemon/application/network_service"
 	core "boyler/internal/daemon/core"
 	layer "boyler/internal/daemon/infrastructure/outbound/image"
 	net_manager "boyler/internal/daemon/infrastructure/outbound/network"
 	overlay "boyler/internal/daemon/infrastructure/outbound/overlay"
-	registry "boyler/internal/daemon/infrastructure/outbound/registry"
 	r "boyler/internal/runtime/myrunc"
 	"context"
 	"fmt"
@@ -63,18 +62,40 @@ var runCmd = &cobra.Command{
 			BridgeIP: os.Getenv("BRIDGE_IP"),
 			InternalNetwork: os.Getenv("CONTAINER_LOCAL_NETWORK"),
 		}
-		reg := registry.NewRepo()
 
 		network, _ := net.NewNetworkService(network_manager,network_service_config)
-		daemon := daemon.NewContainerService(
+		grpc_daemon := service.NewContainerService(
 			ru,
 			fs,
 			im,
 			network,
-			reg,
+			service.ServiceConfig{
+				UnpackDir: os.Getenv("UNPACK_DIR"),
+				ContainerDir: os.Getenv("CONTAINER_DIR"),
+				CgroupPath: os.Getenv("CGROUP_PATH"),
+				SystemPath: os.Getenv("SYSTEM_PATH"),
+			},
 		)
-		cont := core.Container{ImageID: "alpine"}
-		daemon.CreateAndStart(context.Background(),cont)
+		containerRequest := service.CreateContainerCommand{
+    		ContainerName: "alpine-test",
+    		ImageName:     "alpine",
+    		Hostname:      "alpine-box",
+    		Env:           []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
+    		Args:          []string{"/bin/sh"},
+    		Limits: core.Restriction{
+        		Memory: core.MemoryRestriction{
+            		Max: nil, // без жесткого лимита памяти (или укажите pointer на байты, например: int64(512 * 1024 * 1024))
+        		},
+        		CPU: core.CPURestriction{
+            		Weight: nil,
+            		Quota:  nil,
+            		Period: nil,
+            		Cpus:   "",
+            		Mems:   "",
+        		},
+    		},
+		}
+		grpc_daemon.CreateAndStart(context.Background(), containerRequest)
 		}
 	},
 }

@@ -9,9 +9,9 @@ import (
 )
 
 type Runtime interface {
-	Create(ctx context.Context, id string, bundlePath string) (*State, error)
+	Create(ctx context.Context, id string, bundlePath string) error
 
-	Run(ctx context.Context, id string) (*State, error)
+	Run(ctx context.Context, id string) error
 
 	Kill(ctx context.Context, id string, signal os.Signal) error
 

@@ -4,7 +4,9 @@ import (
 	"boyler/internal/daemon/core"
 	"boyler/pkg/logger"
 	"context"
+	"path/filepath"
 	"fmt"
+	"os"
 
 	"github.com/containerd/cgroups/v3/cgroup2"
 )
@@ -27,12 +29,29 @@ type resourcesContainerManager struct{
 }
 
 func NewResourcesManager(cgroupPath string, containerID string, res *core.Restriction, systemPath string) (ResourcesContainerManager, error) {
-	manager := &resourcesContainerManager{cgroupPath: cgroupPath,
-		containerID: containerID,
-		systemPath: systemPath,
+	rootSubtreeControlPath := filepath.Join(systemPath, "cgroup.subtree_control")
+	if err := os.WriteFile(rootSubtreeControlPath, []byte("+cpu +memory"), 0644); err != nil {
+		return nil, fmt.Errorf("failed to enable root subtree_control controllers: %w", err)
 	}
+
+	parentPath := filepath.Join(systemPath, cgroupPath)
+	if err := os.MkdirAll(parentPath, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create parent cgroup directory %s: %w", parentPath, err)
+	}
+
+	subtreeControlPath := filepath.Join(parentPath, "cgroup.subtree_control")
+	if err := os.WriteFile(subtreeControlPath, []byte("+cpu +memory"), 0644); err != nil {
+		return nil, fmt.Errorf("failed to enable subtree_control controllers: %w", err)
+	}
+
+	manager := &resourcesContainerManager{
+		cgroupPath:  cgroupPath,
+		containerID: containerID,
+		systemPath:  systemPath,
+	}
+
 	cgroupsManager, err := manager.createCgroupManager(res, containerID)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	operator := NewGroupOperator(cgroupsManager)
@@ -41,16 +60,17 @@ func NewResourcesManager(cgroupPath string, containerID string, res *core.Restri
 	return manager, nil
 }
 
-
+// SYSTEM_PATH="/sys/fs/cgroup"
+// CGROUP_PATH="boyler_restriction"
 func (c *resourcesContainerManager) createCgroupManager(res *core.Restriction, containerID string) (*cgroup2.Manager, error) {
-	resources :=  mapResources(res)
-	manager, err := cgroup2.NewManager(c.cgroupPath,containerID, resources)
-	if err != nil{
-		return nil, fmt.Errorf("Failed to create cgroup for container %v: %v", containerID, err)
+	resources := mapResources(res)
+	groupPath := "/" + filepath.Join(c.cgroupPath, containerID)
+	manager, err := cgroup2.NewManager(c.systemPath, groupPath, resources)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cgroup manager for %s at %s: %w", groupPath, c.systemPath, err)
 	}
 	return manager, nil
 }
-
 
 func (c *resourcesContainerManager) Apply(ctx context.Context, pid uint64) error {
 	log := logger.FromContext(ctx)
@@ -63,7 +83,7 @@ func (c *resourcesContainerManager) Apply(ctx context.Context, pid uint64) error
 	return nil
 }
 
-// systemPath = "/sys/fs/cgroup"
+
 func (c *resourcesContainerManager) Delete(ctx context.Context, pid uint64) error {
 	log := logger.FromContext(ctx)
 	log.Debug("start delete parametrs to pid","pid",pid)

@@ -2,38 +2,35 @@ package core
 
 import "time"
 
-
 type Container struct {
-	ID string `json:"id"`
-	PID int `json:"pid"`
-	ImageID string `json:"imageid"`
-	CreatedAt time.Time `json:"created_at"`
-	StartedAt time.Time `json:"started_at"`
-	Config ContainerConfig `json:"config"`
+	ID        string
+	PID       int
+	ImageID   string
+	CreatedAt time.Time
+	StartedAt time.Time
+	Config    ContainerConfig
 }
-
 
 type ContainerConfig struct {
-	Hostname string `json:"hostname"`
-	Env []string  	`json:"env"`
-	Args []string	`json:"args"`
-	Resources Restriction `json:"cgroups"`
+	Hostname  string
+	Env       []string
+	Args      []string
+	Resources Restriction
 }
 
-
 type Restriction struct {
-    Memory MemoryRestriction `json:"memory"`
-    CPU    CPURestriction    `json:"cpu"`
+	Memory MemoryRestriction
+	CPU    CPURestriction
 }
 
 type MemoryRestriction struct {
-    Max *int64 `json:"max"`
+	Max *int64
 }
 
 type CPURestriction struct {
-    Weight *uint64 `json:"weight,omitempty"`
-    Quota  *int64  `json:"quota,omitempty"`
-    Period *uint64 `json:"period,omitempty"`
-    Cpus string `json:"cpus,omitempty"`
-    Mems string `json:"mems,omitempty"`
+	Weight *uint64
+	Quota  *int64
+	Period *uint64
+	Cpus   string
+	Mems   string
 }

@@ -1,3 +1,54 @@
 package server
 
+import (
+	pb "boyler/internal/daemon/infrastructure/inbound/api/grpc/gen"
+	grpchandler "boyler/internal/daemon/infrastructure/inbound/api/grpc"
+	inter "boyler/internal/daemon/infrastructure/inbound/api/grpc/interceptor"
+	"fmt"
+	"path/filepath"
+	"time"
+	"net"
+	"os"
+	"google.golang.org/grpc"
+)
 
+
+type Server struct {
+	grpcServer *grpc.Server
+	socketPath string
+}
+
+func NewGrpcServer(socketPath string, daemonHandler *grpchandler.DaemonHandler) *Server {
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(inter.ContextInterceptor(10 * time.Second)))
+	pb.RegisterContainerServiceServer(grpcServer, daemonHandler)
+	return &Server{
+		grpcServer: grpcServer,
+		socketPath: socketPath,
+	}
+}
+
+func (s *Server) Start() error {
+	if err := os.MkdirAll(parentDir(s.socketPath), 0755); err != nil {
+		return fmt.Errorf("Failed mkdir: %v", err)
+	}
+	if err := os.Remove(s.socketPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("Failed to remove old unix-socket: %v", err)
+	}
+	lis, err := net.Listen("unix", s.socketPath)
+	if err != nil {
+		return fmt.Errorf("Failed to listen unix-socket: %v", err)
+	}
+	return s.grpcServer.Serve(lis)
+}
+
+
+func (s *Server) Stop() {
+    if s.grpcServer != nil {s.grpcServer.GracefulStop()}
+    if err := os.Remove(s.socketPath); err != nil && !os.IsNotExist(err) {
+        fmt.Printf("Failed to delete unix-socket during shutdown: %v\n", err)
+    }
+}
+
+func parentDir(socketPath string) string {
+    return filepath.Dir(socketPath)
+}

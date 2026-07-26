@@ -29,4 +29,16 @@ cond:
 	sudo nsenter -t 23506 -m -u -i -n -p -r -w /bin/sh # выбрасывает в терминал контйенра по PID
 	# заставляет отрыть bash в namepaces процесса
 
+.PHONY: genproto
+genproto:
+	protoc --proto_path=proto \
+		--go_out=internal/daemon/infrastructure/inbound/api/grpc/gen \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=internal/daemon/infrastructure/inbound/api/grpc/gen \
+		--go-grpc_opt=paths=source_relative \
+		proto/daemon.proto
 
+
+# sudo rm -f /etc/resolv.conf
+# echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf 
+# setup dns for using VPN in host machine

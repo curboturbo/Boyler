@@ -1,0 +1,161 @@
+syntax = "proto3";
+
+package daemon;
+
+option go_package = "boyler/internal/daemon/infrastructure/inbound/api/grpc/gen";
+
+service ContainerService {
+    rpc CreateContainer(CreateRequest) returns (CreateResponse);
+
+    rpc StartContainer(StartRequest) returns (StartResponse);
+
+    rpc StopContainer(StopRequest) returns (StopResponse);
+
+    rpc RemoveContainer(RemoveRequest) returns (RemoveResponse);
+
+    rpc InspectContainer(InspectRequest) returns (InspectResponse);
+
+    rpc AttachContainer(stream AttachRequest) returns (stream AttachResponse);
+}
+
+service ImageService {
+  rpc PullImage (PullImageRequest) returns (stream PullImageResponse);
+  
+  rpc RemoveImage (RemoveImageRequest) returns (RemoveImageResponse);
+
+  rpc ListImages (ListImagesRequest) returns (ListImagesResponse);
+}
+
+message CreateRequest {
+    string name = 1;
+    string image_identity = 2;
+    repeated string args = 3;
+    map<string, string> env = 4;
+    ResourceLimits resources = 5;
+}
+message CreateResponse {
+    string container_id = 1;
+    string status = 2;
+}
+
+message StartRequest {
+  string container_id = 1;
+}
+
+message StartResponse {
+  string container_id = 1;
+  int32 pid = 2;
+}
+
+message StopRequest {
+  string container_id = 1;
+}
+
+message StopResponse {
+  string container_id = 1;
+}
+
+message ResourceLimits {
+  MemoryRestriction memory = 1;
+  CPURestriction cpu = 2;
+}
+
+message MemoryRestriction {
+  int64 max = 1;
+  bool exist = 2;
+}
+
+message CPURestriction {
+  uint64 weight = 1;
+  int64 quota = 2;
+  uint64 period = 3;
+  string cpus = 4;
+  string mems = 5;
+}
+
+message RemoveRequest {
+    string container_id = 1;
+}
+
+message RemoveResponse {
+    string container_id = 1;
+}
+
+message InspectRequest {
+    string container_id = 1;
+}
+
+message InspectResponse {
+  string container_id = 1;
+  int32 pid = 2;
+  string image_id = 3;
+  string created_at = 4;
+  string started_at = 5;
+  string status = 6;
+  string hostname = 7;
+  repeated string env = 8;
+  repeated string args = 9;
+  ResourceLimits resources = 10;
+}
+
+message PullImageRequest {
+    string image_identity = 1;
+}
+
+message PullImageResponse {
+    string status = 1;
+    int64 progress = 2;
+    int64 total = 3;
+}
+
+message RemoveImageRequest {
+    string image_id = 1;
+}
+
+message RemoveImageResponse {
+    string status = 1;
+}
+
+message ListImagesRequest {}
+
+message ListImagesResponse {
+    repeated ImageSummary images = 1;
+}
+
+message ImageSummary {
+    string id = 1;
+    string repo_tag = 2;
+    int64 size = 3;
+    string created_at = 4;
+}
+
+message AttachRequest {
+    oneof payload {
+        AttachInit init = 1;
+        bytes stdin = 2;
+        TerminalSize resize = 3;
+    }
+}
+
+message AttachInit {
+    string container_id = 1;
+}
+
+message TerminalSize {
+    uint32 width = 1;
+    uint32 height = 2;
+}
+
+message AttachResponse {
+    oneof payload {
+        bytes stdout = 1;
+        bytes stderr = 2;
+        ExitStatus exit = 3;
+    }
+}
+
+message ExitStatus {
+    int32 code = 1;
+}
+
+
