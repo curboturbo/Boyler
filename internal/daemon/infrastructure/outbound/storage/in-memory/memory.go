@@ -26,22 +26,22 @@ func (r *ContainerRepository) Save(ctx context.Context, container core.Container
 	return nil
 }
 
-func (r *ContainerRepository) Get(ctx context.Context, id string) (core.Container, error) {
+func (r *ContainerRepository) Get(ctx context.Context, id string) (*core.Container, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	c, ok := r.data[id]
 	if !ok {
-		return core.Container{}, fmt.Errorf("container %s not found", id)
+		return &core.Container{}, fmt.Errorf("container %s not found", id)
 	}
-	return c, nil
+	return &c, nil
 }
 
-func (r *ContainerRepository) List(ctx context.Context) ([]core.Container, error) {
+func (r *ContainerRepository) List(ctx context.Context) ([]*core.Container, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	result := make([]core.Container, 0, len(r.data))
+	result := make([]*core.Container, 0, len(r.data))
 	for _, c := range r.data {
-		result = append(result, c)
+		result = append(result, &c)
 	}
 	return result, nil
 }

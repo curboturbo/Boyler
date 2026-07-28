@@ -109,7 +109,7 @@ func (m *MockContainerService) Stop(ctx context.Context, cmd StopContainerComman
 	}, nil
 }
 
-func (m *MockContainerService) Delete(ctx context.Context, cmd DeleteContainerCommand) (*DeleteContainerResponse, error) {
+func (m *MockContainerService) Remove(ctx context.Context, cmd RemoveContainerCommand) (*RemoveContainerResponse, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -123,7 +123,7 @@ func (m *MockContainerService) Delete(ctx context.Context, cmd DeleteContainerCo
 
 	delete(m.Containers, cmd.ID)
 
-	return &DeleteContainerResponse{
+	return &RemoveContainerResponse{
 		ContainerContext: ContainerContext{ID: cmd.ID},
 	}, nil
 }
@@ -191,3 +191,5 @@ func (m *MockContainerService) Attach(ctx context.Context, cmd AttachContainerCo
 
 	return session, nil
 }
+func (m *MockContainerService) Pause(ctx context.Context, cmd PauseContainerCommand) (*PauseContainerResponse, error){ return nil, nil }
+func (m *MockContainerService) Unpause(ctx context.Context, cmd UnpauseContainerCommand) (*UnpauseContainerResponse, error){ return nil, nil }

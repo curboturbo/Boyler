@@ -22,13 +22,23 @@ type RestartContainerResponse struct {
 	ContainerContext
 }
 
-type DeleteContainerResponse struct {
+type RemoveContainerResponse struct {
 	ContainerContext
 }
 
 type StopContainerResponse struct {
 	ContainerContext
 }
+
+type PauseContainerResponse struct {
+	ContainerContext
+}
+
+type UnpauseContainerResponse struct {
+	ContainerContext
+}
+
+
 
 type AttachSession struct {
     Stdin  io.WriteCloser

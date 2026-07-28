@@ -84,6 +84,9 @@ func (vm *overlayManager) Cleanup(ctx context.Context, containerID string) error
 		err := os.RemoveAll(filepath.Join(delDir, entry.Name()))
 		if err != nil {return err}
 	}
+	if err := os.Remove(delDir); err != nil{
+		return err
+	}
 	log.Info("dirs cleaned")
 	return nil
 }

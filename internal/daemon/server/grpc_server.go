@@ -19,7 +19,7 @@ type Server struct {
 }
 
 func NewGrpcServer(socketPath string, daemonHandler *grpchandler.DaemonHandler) *Server {
-	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(inter.ContextInterceptor(10 * time.Second)))
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(inter.ContextInterceptor(15 * time.Second)))
 	pb.RegisterContainerServiceServer(grpcServer, daemonHandler)
 	return &Server{
 		grpcServer: grpcServer,

@@ -46,3 +46,11 @@ func MapStartRequestToCommand(req *gen.StartRequest) application.StartContainerC
 		ContainerContext: contCtx,
 	}
 }
+
+
+func MapRemoveRequestToCommand(req *gen.RemoveRequest) application.RemoveContainerCommand {
+	contCtx := application.ContainerContext{ID: req.ContainerId}
+	return application.RemoveContainerCommand{
+		ContainerContext: contCtx,
+	}
+}

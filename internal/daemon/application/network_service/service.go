@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"boyler/internal/daemon/core"
 	net "boyler/internal/daemon/infrastructure/outbound/network"
 	"boyler/pkg/logger"
 )
@@ -16,26 +17,31 @@ type NetworkServiceConfig struct {
 }
 
 type NetworkService interface{
-	InitHostNetwork(ctx context.Context) error
 	ConnectContainer(ctx context.Context, containerID string, containerPID int) error
 	ExposePort(ctx context.Context, hostPort string, containerPort string, containerIP string) error
 	IsolateContainer(ctx context.Context, containerIP string) error
 	UnisolateContainer(ctx context.Context, containerIP string) error
+	FreeIpAddress(ctx context.Context, containerID string) error
 }
 
 
 type ContainerNetInfo struct {
 	IpAddres string		// x.x.x.x/24
 	Veth string
+	IpIndex int
 }
 
-
+// Bridge creation is a singleton operation during the creation of the first container. 
+// The current release does not support multi-network management.
+// Multi-network management will be available in boiler v1.1.
 type networkService struct {
 	mu             sync.Mutex
 	manager net.NetworkInfrastructureManager
 	config         NetworkServiceConfig
 	containerNet map[string]ContainerNetInfo
 	ipPool []byte
+	netBridgeSingleton sync.Once
+	hostNetErr *core.NetworkError
 }
 
 
@@ -52,14 +58,11 @@ func NewNetworkService(manager net.NetworkInfrastructureManager, config NetworkS
 	}, nil
 }
 
-func (ns *networkService) InitHostNetwork(ctx context.Context) error {
-	ctx = logger.WithFields(ctx, "bridge_name",ns.config.BridgeName, "bridge_ip", ns.config.BridgeIP)
-	if err := ns.manager.SetUpBridge(ctx, ns.config.BridgeName, ns.config.BridgeIP); err != nil{return err}
-	if err := ns.manager.BridgeOpen(ctx, ns.config.InternalNetwork, ns.config.BridgeName); err !=nil{return err}
-	return nil
-}
 
 func (ns *networkService) ConnectContainer(ctx context.Context, containerID string, containerPID int) error {
+	if err := ns.ensureHostNetwork(ctx); err != nil {
+		return &core.NetworkError{Op: "init_host", Err: err}
+	}
 	ctx = logger.WithFields(ctx,"containerPID", containerPID, "bridge_name",ns.config.BridgeName, "bridge_ip", ns.config.BridgeIP)
 	vethName := "v" + containerID[:5]
 	num, err := ns.AllocateIP()
@@ -78,7 +81,7 @@ func (ns *networkService) ConnectContainer(ctx context.Context, containerID stri
 
 	ns.mu.Lock()
 	defer ns.mu.Unlock()
-	ns.containerNet[containerID] = ContainerNetInfo{Veth:vethName,IpAddres: containerIP}
+	ns.containerNet[containerID] = ContainerNetInfo{Veth:vethName,IpAddres: containerIP, IpIndex: num}
 	return nil
 }
 
@@ -137,5 +140,38 @@ func (ns *networkService) FreeIp(num int) error{
 	if num > len(ns.ipPool) || num <= 1{
 		return fmt.Errorf("Invalid destination address")
 	}else{ ns.ipPool[num] = 0}
+	return nil
+}
+
+func (ns *networkService) FreeIpAddress(ctx context.Context, containerID string) error {
+	value, ok := ns.containerNet[containerID]
+	if !ok {
+		return &core.NetworkError{Op:"free", Err: core.ErrIpAddressNotExist}
+	}
+	err := ns.FreeIp(value.IpIndex)
+	if err != nil{
+		return &core.NetworkError{Op:"free ip", Err: err}
+	}
+	delete(ns.containerNet, containerID)
+	return nil
+}
+
+func (ns *networkService) ensureHostNetwork(ctx context.Context) error {
+	ns.netBridgeSingleton.Do(func() {
+		ctx = logger.WithFields(ctx, "bridge_name", ns.config.BridgeName, "bridge_ip", ns.config.BridgeIP)
+		
+		if err := ns.manager.SetUpBridge(ctx, ns.config.BridgeName, ns.config.BridgeIP); err != nil {
+			ns.hostNetErr = &core.NetworkError{Op: "bridge", Err: err}
+			return
+		}
+		
+		if err := ns.manager.BridgeOpen(ctx, ns.config.InternalNetwork, ns.config.BridgeName); err != nil {
+			ns.hostNetErr = &core.NetworkError{Op: "bridge", Err: err}
+			return
+		}
+	})
+	if ns.hostNetErr != nil {
+		return ns.hostNetErr
+	}
 	return nil
 }

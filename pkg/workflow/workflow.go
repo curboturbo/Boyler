@@ -36,19 +36,15 @@ func (w *Workflow) Add(saga SagaStep) {
 
 
 func (w *Workflow) Execute() error {
-	for i, elem:= range w.Steps{
-		if err := elem.Commit(); err != nil{
-			for j := i; j >= 0; j-- {
-				w.Steps[j].Rollback()
-				if i == j{
-					break
+	for i, step := range w.Steps {
+		if err := step.Commit(); err != nil {
+			for j := i - 1; j >= 0; j-- {
+				if rbErr := w.Steps[j].Rollback(); rbErr != nil {
+					fmt.Printf("rollback step %d failed: %v\n", j, rbErr)
 				}
 			}
-			return fmt.Errorf("Failed on %d workflow step: %v", i, err)
-		}else{
-			continue
+			return fmt.Errorf("workflow failed at step %d: %w", i, err)
 		}
 	}
 	return nil
 }
-

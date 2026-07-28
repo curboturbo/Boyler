@@ -29,6 +29,6 @@ var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Show current version of app",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Print("I want to")
+		fmt.Print("Boyler 1.0")
 	},
 }

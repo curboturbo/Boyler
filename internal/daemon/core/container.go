@@ -6,6 +6,7 @@ type Container struct {
 	ID        string
 	PID       int
 	ImageID   string
+	Status Condition
 	CreatedAt time.Time
 	StartedAt time.Time
 	Config    ContainerConfig
@@ -34,3 +35,12 @@ type CPURestriction struct {
 	Cpus   string
 	Mems   string
 }
+
+type Condition string
+
+const (
+	StatusDeleted Condition = "deleted"
+	StatusRunning  Condition = "running"
+	StatusStopped  Condition = "stopped"
+	StatusFreeze Condition = "pause"
+)

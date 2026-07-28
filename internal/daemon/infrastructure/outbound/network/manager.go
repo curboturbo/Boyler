@@ -62,7 +62,8 @@ func (net *networkInfrastructureManager) SetUpBridge(ctx context.Context, bridge
 	log.Debug("start setup l2/l3 bridge")
 	_, err := netlink.LinkByName(bridgeName)
 	if err == nil{
-		return fmt.Errorf("Failed bridge has already done: %v", err)
+		log.Warn("Most has alredy done","bridgeName",bridgeName)
+		return nil
 	}
 	la := netlink.NewLinkAttrs()
 	la.Name = bridgeName

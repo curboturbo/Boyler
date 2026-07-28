@@ -83,7 +83,7 @@ type StopContainerCommand struct {
 	ContainerContext
 }
 
-type DeleteContainerCommand struct {
+type RemoveContainerCommand struct {
 	ContainerContext
 }
 
@@ -95,6 +95,15 @@ type RestartContainerCommand struct {
 type AttachContainerCommand struct {
 	ContainerContext
 }
+
+type PauseContainerCommand struct {
+	ContainerContext
+}
+
+type UnpauseContainerCommand struct {
+	ContainerContext
+}
+
 
 type OutputType string
 

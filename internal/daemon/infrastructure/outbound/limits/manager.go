@@ -87,14 +87,14 @@ func (c *resourcesContainerManager) Apply(ctx context.Context, pid uint64) error
 func (c *resourcesContainerManager) Delete(ctx context.Context, pid uint64) error {
 	log := logger.FromContext(ctx)
 	log.Debug("start delete parametrs to pid","pid",pid)
-	rootMgr, err := cgroup2.NewManager(c.systemPath, "/", nil)
-	if err != nil {
-		return fmt.Errorf("Failed to connect to root cgroup: %w", err)
+	if err := c.lowLevelManager.Kill(); err != nil{
+		log.Warn("failed to kill processes in cgroup", "error", err)
 	}
-	if err := rootMgr.AddProc(pid); err != nil{
-		return fmt.Errorf("Failed to add pid to root cgroups: %v",err)
+	if err := c.lowLevelManager.Delete(); err != nil {
+		log.Error("failed to cgroup: %v","err", err)
+		return fmt.Errorf("Failed to kill cgroup")
 	}
-	log.Info("cgroups deleted")
+	log.Info("cgroup successfully deleted")
 	return nil
 }
 

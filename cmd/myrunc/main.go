@@ -11,6 +11,7 @@ type execInfo struct {
 	id string		  // container id
 	bundlePath string // path to boyler/container/container_xxx
 	sigNum string     // signal to process (SIGTERM, SIGKILL and e.t.c)
+	TTE int
 }
 
 
@@ -57,7 +58,7 @@ func main(){
 				sigNum: os.Args[3],
 			})
 
-		case "delete":
+		case "kill":
 			err = execDeleteContainerRuntime(&execInfo{
 				id: containerID,
 			})

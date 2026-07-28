@@ -5,9 +5,13 @@ import (
 	net "boyler/internal/daemon/application/network_service"
 	core "boyler/internal/daemon/core"
 	layer "boyler/internal/daemon/infrastructure/outbound/image"
+	limits "boyler/internal/daemon/infrastructure/outbound/limits"
 	net_manager "boyler/internal/daemon/infrastructure/outbound/network"
 	overlay "boyler/internal/daemon/infrastructure/outbound/overlay"
 	r "boyler/internal/runtime/myrunc"
+	logger "boyler/pkg/logger"
+	registry "boyler/internal/daemon/infrastructure/outbound/registry"
+	storage "boyler/internal/daemon/infrastructure/outbound/storage/in-memory"
 	"context"
 	"fmt"
 
@@ -56,6 +60,7 @@ var runCmd = &cobra.Command{
 			Forward: os.Getenv("IP_FORWARDING_PATH"),
 
 		}
+
 		network_manager := net_manager.NewNetworkManager(config)
 		network_service_config := net.NetworkServiceConfig{
 			BridgeName: os.Getenv("BRIDGE_NAME"),
@@ -64,18 +69,23 @@ var runCmd = &cobra.Command{
 		}
 
 		network, _ := net.NewNetworkService(network_manager,network_service_config)
-		grpc_daemon := service.NewContainerService(
-			ru,
-			fs,
-			im,
-			network,
-			service.ServiceConfig{
+		grpc_daemon := service.NewContainerService(service.Deps{
+			Runtime: ru,
+			FS:      fs,
+			Images:  im,
+			Network: network,
+			Reg:     registry.NewRepo(),
+			Store:   storage.NewContainerRepository(),
+			Logger:  logger.InitLogger(false),
+			CgroupFactory: limits.NewFactory(),
+			Conf: service.ServiceConfig{
 				UnpackDir: os.Getenv("UNPACK_DIR"),
 				ContainerDir: os.Getenv("CONTAINER_DIR"),
 				CgroupPath: os.Getenv("CGROUP_PATH"),
 				SystemPath: os.Getenv("SYSTEM_PATH"),
 			},
-		)
+		})
+
 		containerRequest := service.CreateContainerCommand{
     		ContainerName: "alpine-test",
     		ImageName:     "alpine",
@@ -95,7 +105,31 @@ var runCmd = &cobra.Command{
         		},
     		},
 		}
+		my_honest_testing_id :="8e6ff240-a1a5-4642-a58e-1a53b3222ee0"
 		grpc_daemon.CreateAndStart(context.Background(), containerRequest)
+		fmt.Printf("=======================-=-=-=-=-=-=-=-=-==-=-=-=-=-===================================\n")
+		var mock_flag string
+		fmt.Scan(&mock_flag)
+		fmt.Printf("ТЕСТИРУЕМ останвоку НАШЕГО КОНТЙЕНЕРА\n")
+		asn, err := grpc_daemon.Stop(context.Background(), service.StopContainerCommand{
+			ContainerContext: service.ContainerContext{ID: my_honest_testing_id},
+		})
+		if err != nil{
+			fmt.Printf("НЕ СМОГ УДАЛИТЬ: %v\n", err)
+		}
+		fmt.Printf("РЕСПОНС ОТ УДАЛЕНИЯ: %v",asn.ID)
+		fmt.Printf("===========!!!!!!==@===@=======-=-=-=-=-=-=-=-=-==-=-=-=-=-=====@=========@===!!!!!!==================\n")
+
+		fmt.Printf("===========!!!!!!==@===@=======-=-=-=-=-=-=-=-=-==-=-=-=-=-=====@=========@===!!!!!!==================\n")
+		fmt.Printf("Запускаю тот же конйтенер заново\n")
+		ans, err := grpc_daemon.Start(context.Background(), service.StartContainerCommand{
+			ContainerContext: service.ContainerContext{ID: my_honest_testing_id},
+		})
+		if err != nil{
+			fmt.Printf("НЕ СМОГ ЗАНОВО ЗАПУСТИТЬ ПРОЦЕСС: %v", err)
+		}
+		fmt.Print(ans.ID)
 		}
 	},
+
 }

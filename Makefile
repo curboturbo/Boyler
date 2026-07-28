@@ -10,16 +10,19 @@ clean-test:
 	@echo "Alpine images and junk was cleaned"
 
 
+OS = linux
+ARCH = amd_64
+
 .PHONY: compile
 compile:
-	go build -o bin/cobra ./cmd/boyler
+	go build -o bin/boyler_$(OS)_$(ARCH) ./cmd/boyler
 	go build -o bin/myrunc ./cmd/myrunc
 	@echo "Binary files was created"
 
 
 .PHONY: run
 run:
-	-export $$(cat .env | xargs) && sudo -E ./bin/cobra run
+	-export $$(cat .env | xargs) && sudo -E ./bin/boyler_$(OS)_$(ARCH) run
 	@echo "Test fun finished"
 
 
