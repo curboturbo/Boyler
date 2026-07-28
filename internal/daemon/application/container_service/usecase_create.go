@@ -41,7 +41,6 @@ func NewCreator(d Deps) *Creator {
 	}
 }
 
-// ПОФИКСИТЬ ЛОГИКУ ПЕРЕЗАПУСКА , УСТРАНИТЬ ПРОБЛЕМЫ С МОСТАМИ И NETWORK_SERICE
 
 func (c *Creator) ExecuteCreate(ctx context.Context, cmd CreateContainerCommand) (*CreateContainerResponse, error) {
 	// id = uuid.New().String()

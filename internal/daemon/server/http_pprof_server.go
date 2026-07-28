@@ -8,15 +8,14 @@ import (
 
 
 type ServerConfig struct {
-	addr string
-	log *slog.Logger
+	Addr string
+	Log *slog.Logger
 }
-
 
 func StartPprofServer(s ServerConfig) {
 	go func() {
-		if err := http.ListenAndServe(s.addr,nil); err != nil{
-			s.log.Error("Failed to start pprof server")
+		if err := http.ListenAndServe(s.Addr,nil); err != nil{
+			s.Log.Error("Failed to start pprof server")
 			return
 		}
 	}()

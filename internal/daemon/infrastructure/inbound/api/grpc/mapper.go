@@ -13,10 +13,9 @@ func MapCreateRequestToCommand(req *gen.CreateRequest) application.CreateContain
 		opts = append(opts, application.WithImage(req.ImageIdentity))
 	}
 
-	if req.Name != ""{
+	if req.Name != "" {
 		opts = append(opts, application.WithName(req.Name))
 	}
-
 
 	if len(req.Args) > 0 {
 		opts = append(opts, application.WithArgs(req.Args))
@@ -47,6 +46,11 @@ func MapStartRequestToCommand(req *gen.StartRequest) application.StartContainerC
 	}
 }
 
+func MapStopRequestToCommand(req *gen.StopRequest) application.StopContainerCommand {
+	return application.StopContainerCommand{
+		ContainerContext: application.ContainerContext{ID: req.ContainerId},
+	}
+}
 
 func MapRemoveRequestToCommand(req *gen.RemoveRequest) application.RemoveContainerCommand {
 	contCtx := application.ContainerContext{ID: req.ContainerId}
