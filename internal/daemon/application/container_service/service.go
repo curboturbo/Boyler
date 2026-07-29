@@ -10,6 +10,7 @@ type ContainerService interface {
 	Unpause(ctx context.Context, cmd UnpauseContainerCommand) (*UnpauseContainerResponse, error)
 	Remove(ctx context.Context, cmd RemoveContainerCommand) (*RemoveContainerResponse, error)
 	Restart(ctx context.Context, cmd RestartContainerCommand) (*RestartContainerResponse, error)
+	Inspect(ctx context.Context, cmd InspectContainerCommand) (*InspectContainerResponse, error)
 	Attach(ctx context.Context, cmd AttachContainerCommand) (*AttachSession, error) // most harders part all grpc
 }
 
@@ -21,6 +22,7 @@ type containerService struct {
 	remover   *Remover
 	restarter *Restarter
 	attacher  *Attacher
+	cursor    *Cursor
 }
 
 func NewContainerService(d Deps) ContainerService {
@@ -32,6 +34,7 @@ func NewContainerService(d Deps) ContainerService {
 		remover:   NewRemover(d),
 		restarter: NewRestarter(d),
 		attacher:  NewAttacher(d),
+		cursor: NewCursor(d),
 	}
 }
 
@@ -65,4 +68,8 @@ func (c *containerService) Restart(ctx context.Context, cmd RestartContainerComm
 
 func (c *containerService) Attach(ctx context.Context, cmd AttachContainerCommand) (*AttachSession, error) {
 	return c.attacher.Execute(ctx, cmd)
+}
+
+func (c *containerService) Inspect(ctx context.Context, cmd InspectContainerCommand) (*InspectContainerResponse, error) {
+	return c.cursor.Execute(ctx, cmd)
 }

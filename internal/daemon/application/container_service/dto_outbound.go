@@ -1,6 +1,7 @@
 package application
 
 import (
+	"boyler/internal/daemon/core"
 	"io"
 )
 
@@ -38,7 +39,18 @@ type UnpauseContainerResponse struct {
 	ContainerContext
 }
 
-
+type InspectContainerResponse struct {
+	ContainerID string
+	Pid         int32
+	ImageID     string
+	CreatedAt   string
+	StartedAt   string
+	Status      string
+	Hostname    string
+	Env         []string
+	Args        []string
+	Resources   core.Restriction
+}
 
 type AttachSession struct {
     Stdin  io.WriteCloser

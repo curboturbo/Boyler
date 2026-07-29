@@ -27,3 +27,30 @@ func MapStopResponseToProto(resp *application.StopContainerResponse) *gen.StopRe
 func MapRemoveResponseToProto(resp *application.RemoveContainerResponse) *gen.RemoveResponse {
 	return &gen.RemoveResponse{ContainerId: resp.ID}
 }
+
+func MapInspectResponseToProto(resp *application.InspectContainerResponse) *gen.InspectResponse {
+	return &gen.InspectResponse{
+		ContainerId: resp.ContainerID,
+		Pid: resp.Pid,
+		ImageId: resp.ImageID,
+		CreatedAt: resp.CreatedAt,
+		StartedAt: resp.StartedAt,
+		Env: resp.Env,
+		Args: resp.Args,
+		Status: resp.Status,
+		Hostname: resp.Hostname,
+		Resources: &gen.ResourceLimits{
+			Memory: &gen.MemoryRestriction{
+				Max: *resp.Resources.Memory.Max,
+				Exist: true,
+			},
+			Cpu: &gen.CPURestriction{
+				Weight: *resp.Resources.CPU.Weight,
+				Quota: *resp.Resources.CPU.Quota,
+				Period: *resp.Resources.CPU.Period,
+				Cpus: resp.Resources.CPU.Cpus,
+				Mems: resp.Resources.CPU.Mems,
+			},
+		},
+	}
+}

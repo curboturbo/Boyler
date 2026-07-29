@@ -46,6 +46,7 @@ type networkService struct {
 
 
 func NewNetworkService(manager net.NetworkInfrastructureManager, config NetworkServiceConfig) (NetworkService, error) {
+	fmt.Printf("DEBUG InternalNetwork=[%s]\n", config.InternalNetwork)
 	subNetSize, err := UsableHosts(config.InternalNetwork)
 	if err != nil || subNetSize == 0{
 		return nil, fmt.Errorf("Invalid network")

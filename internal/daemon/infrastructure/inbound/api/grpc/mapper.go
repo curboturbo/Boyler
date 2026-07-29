@@ -23,16 +23,41 @@ func MapCreateRequestToCommand(req *gen.CreateRequest) application.CreateContain
 
 	if req.Resources != nil {
 		limits := core.Restriction{}
+
 		if req.Resources.Memory != nil && req.Resources.Memory.Exist {
-			limits.Memory.Max = &req.Resources.Memory.Max
+			max := req.Resources.Memory.Max
+			if max > 0 {
+				limits.Memory.Max = &max
+			}
 		}
-		if req.Resources.Cpu != nil {
-			limits.CPU.Weight = &req.Resources.Cpu.Weight
-			limits.CPU.Quota = &req.Resources.Cpu.Quota
-			limits.CPU.Period = &req.Resources.Cpu.Period
-			limits.CPU.Cpus = req.Resources.Cpu.Cpus
-			limits.CPU.Mems = req.Resources.Cpu.Mems
+		if cpu := req.Resources.Cpu; cpu != nil {
+			if cpu.Weight > 0 {
+				if cpu.Weight > 10000 {
+					weight := uint64(10000)
+					limits.CPU.Weight = &weight
+				} else {
+					weight := cpu.Weight
+					limits.CPU.Weight = &weight
+				}
+			}
+			if cpu.Quota > 0 {
+				quota := cpu.Quota
+				limits.CPU.Quota = &quota
+
+				period := cpu.Period
+				if period == 0 {
+					period = 100000
+				}
+				limits.CPU.Period = &period
+			}
+			if cpu.Cpus != "" {
+				limits.CPU.Cpus = cpu.Cpus
+			}
+			if cpu.Mems != "" {
+				limits.CPU.Mems = cpu.Mems
+			}
 		}
+
 		opts = append(opts, application.WithLimits(limits))
 	}
 
@@ -55,6 +80,13 @@ func MapStopRequestToCommand(req *gen.StopRequest) application.StopContainerComm
 func MapRemoveRequestToCommand(req *gen.RemoveRequest) application.RemoveContainerCommand {
 	contCtx := application.ContainerContext{ID: req.ContainerId}
 	return application.RemoveContainerCommand{
+		ContainerContext: contCtx,
+	}
+}
+
+func MapInsRequestToCommand(req *gen.InspectRequest) application.InspectContainerCommand {
+	contCtx := application.ContainerContext{ID: req.ContainerId}
+	return application.InspectContainerCommand{
 		ContainerContext: contCtx,
 	}
 }

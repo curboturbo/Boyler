@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -15,20 +16,6 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show current version of app",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Boyler v0.1.0")
-	},
-}
-
-
-func init() {
-	rootCmd.AddCommand(checkCmd)
-	
-}
-
-var checkCmd = &cobra.Command{
-	Use:   "check",
-	Short: "Show current version of app",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Print("Boyler 1.0")
+		fmt.Printf("Current version - %v", os.Getenv("VERSION"))
 	},
 }

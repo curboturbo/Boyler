@@ -104,6 +104,9 @@ type UnpauseContainerCommand struct {
 	ContainerContext
 }
 
+type InspectContainerCommand struct {
+	ContainerContext
+}
 
 type OutputType string
 

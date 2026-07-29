@@ -56,3 +56,13 @@ func (d *DaemonHandler) RemoveContainer(ctx context.Context, req *pb.RemoveReque
 func (d *DaemonHandler) AttachContainer(req grpc.BidiStreamingServer[pb.AttachRequest, pb.AttachResponse]) error {
 	return nil
 }
+
+
+func (d *DaemonHandler) InspectContainer(ctx context.Context, req *pb.InspectRequest) (*pb.InspectResponse, error) {
+	command := MapInsRequestToCommand(req)
+	serviceResponse, err := d.containerService.Inspect(ctx, command)
+	if err != nil {
+		return &pb.InspectResponse{}, err
+	}
+	return MapInspectResponseToProto(serviceResponse), nil
+}

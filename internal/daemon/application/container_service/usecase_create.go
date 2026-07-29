@@ -83,6 +83,7 @@ func (c *Creator) ExecuteStart(ctx context.Context, cmd StartContainerCommand) (
 
 	container.StartedAt = startTime
 	container.PID = pid
+	container.Status = core.StatusRunning
 	c.store.Save(ctx, *container)
 
 	return &StartContainerResponse{

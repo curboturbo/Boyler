@@ -2,24 +2,39 @@ package logger
 
 import (
 	"context"
+	"io"
+	"log"
 	"log/slog"
 	"os"
 )
 
 type ctxKey struct{}
 
-func InitLogger(isJSON bool) *slog.Logger{
+func InitLogger(isJSON bool) *slog.Logger {
 	var handler slog.Handler
-	switch isJSON{
+
+	logPath := os.Getenv("DAEMON_LOG_PATH")
+	var writer io.Writer = os.Stdout
+
+	if logPath != "" {
+		logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err == nil {
+			writer = io.MultiWriter(os.Stdout, logFile)
+		} else {
+			log.Printf("failed to open log file %s: %v", logPath, err)
+		}
+	}
+
+	switch isJSON {
 	case true:
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		handler = slog.NewJSONHandler(writer, &slog.HandlerOptions{
 			AddSource: true,
-			Level: slog.LevelDebug,
+			Level:     slog.LevelDebug,
 		})
 	case false:
-		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		handler = slog.NewTextHandler(writer, &slog.HandlerOptions{
 			AddSource: true,
-			Level: slog.LevelDebug,
+			Level:     slog.LevelDebug,
 		})
 	}
 	logger := slog.New(handler)

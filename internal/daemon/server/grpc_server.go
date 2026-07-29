@@ -1,14 +1,16 @@
 package server
 
 import (
-	pb "boyler/internal/daemon/infrastructure/inbound/api/grpc/gen"
 	grpchandler "boyler/internal/daemon/infrastructure/inbound/api/grpc"
+	pb "boyler/internal/daemon/infrastructure/inbound/api/grpc/gen"
 	inter "boyler/internal/daemon/infrastructure/inbound/api/grpc/interceptor"
 	"fmt"
-	"path/filepath"
-	"time"
+	"log/slog"
 	"net"
 	"os"
+	"path/filepath"
+	"time"
+
 	"google.golang.org/grpc"
 )
 
@@ -43,10 +45,12 @@ func (s *Server) Start() error {
 
 
 func (s *Server) Stop() {
-    if s.grpcServer != nil {s.grpcServer.GracefulStop()}
-    if err := os.Remove(s.socketPath); err != nil && !os.IsNotExist(err) {
-        fmt.Printf("Failed to delete unix-socket during shutdown: %v\n", err)
-    }
+	if s.grpcServer != nil {
+		s.grpcServer.GracefulStop()
+	}
+	if err := os.Remove(s.socketPath); err != nil && !os.IsNotExist(err) {
+		slog.Error("Failed to delete unix-socket during shutdown", slog.String("error", err.Error()))
+	}
 }
 
 func parentDir(socketPath string) string {
