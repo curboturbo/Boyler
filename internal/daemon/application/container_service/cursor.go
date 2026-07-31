@@ -27,7 +27,18 @@ func (c *Cursor) findContainer(ctx context.Context, id string) (*InspectContaine
 	if err != nil {
 		return nil, &core.InternalDaemonError{Op: "find", Err: err}
 	}
+	return cursorPrivateMapper(container), nil
+}
 
+
+func (c *Cursor) Ps(ctx context.Context, cmd PsCommand) ([]*core.Container, error) {
+	containerList, err  := c.store.List(ctx)
+	if err != nil{ return nil, &core.InternalDaemonError{Op:"Ps", Err:err} }
+	return containerList, nil
+}
+
+
+func cursorPrivateMapper(container *core.Container) *InspectContainerResponse {
 	var maxMem int64
 	if container.Config.Resources.Memory.Max != nil {
 		maxMem = *container.Config.Resources.Memory.Max
@@ -47,7 +58,6 @@ func (c *Cursor) findContainer(ctx context.Context, id string) (*InspectContaine
 	if container.Config.Resources.CPU.Period != nil {
 		cpuPeriod = *container.Config.Resources.CPU.Period
 	}
-
 	return &InspectContainerResponse{
 		ContainerID: container.ID,
 		Pid:         int32(container.PID),
@@ -70,5 +80,5 @@ func (c *Cursor) findContainer(ctx context.Context, id string) (*InspectContaine
 				Mems:   container.Config.Resources.CPU.Mems,
 			},
 		},
-	}, nil
+	}
 }

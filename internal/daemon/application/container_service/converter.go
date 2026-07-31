@@ -3,6 +3,8 @@ package application
 import (
 	"time"
 	"boyler/internal/daemon/core"
+
+	genName "boyler/pkg/generator"
 )
 
 
@@ -40,5 +42,11 @@ func WithId(id string) CoreContainerOption {
 func WithTime(create, start time.Time) CoreContainerOption{
 	return func(c *core.Container) {
 		c.CreatedAt, c.StartedAt = create, start
+	}
+}
+
+func WithCoreName(name string) CoreContainerOption {
+	return func(c *core.Container) {
+		c.Name = genName.NameOrCreate(name)
 	}
 }

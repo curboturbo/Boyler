@@ -6,6 +6,7 @@ package runtime
 import (
 	"context"
 	"os"
+	"io"
 )
 
 type Runtime interface {
@@ -18,6 +19,8 @@ type Runtime interface {
 	Delete(ctx context.Context, id string) error
 
 	State(ctx context.Context, id string) (*State, error)
+
+	ExecPTY(ctx context.Context,pid int64) (io.ReadWriteCloser, error)
 }
 
 type Status string

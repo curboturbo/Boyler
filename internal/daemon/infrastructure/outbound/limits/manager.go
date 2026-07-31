@@ -4,9 +4,10 @@ import (
 	"boyler/internal/daemon/core"
 	"boyler/pkg/logger"
 	"context"
-	"path/filepath"
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/containerd/cgroups/v3/cgroup2"
 )
@@ -90,6 +91,8 @@ func (c *resourcesContainerManager) Delete(ctx context.Context, pid uint64) erro
 	if err := c.lowLevelManager.Kill(); err != nil{
 		log.Warn("failed to kill processes in cgroup", "error", err)
 	}
+	log.Debug("Kernel 2-second sleep, wait while cgroup-manager kill proc\n")
+	time.Sleep(2*time.Second)
 	if err := c.lowLevelManager.Delete(); err != nil {
 		log.Error("failed to cgroup: %v","err", err)
 		return fmt.Errorf("Failed to kill cgroup")

@@ -5,6 +5,7 @@ import "time"
 type Container struct {
 	ID        string
 	PID       int
+	Name string
 	ImageID   string
 	Status Condition
 	CreatedAt time.Time

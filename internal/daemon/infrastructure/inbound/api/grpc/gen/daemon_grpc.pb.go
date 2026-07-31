@@ -25,6 +25,7 @@ const (
 	ContainerService_RemoveContainer_FullMethodName  = "/daemon.ContainerService/RemoveContainer"
 	ContainerService_InspectContainer_FullMethodName = "/daemon.ContainerService/InspectContainer"
 	ContainerService_AttachContainer_FullMethodName  = "/daemon.ContainerService/AttachContainer"
+	ContainerService_ContainersList_FullMethodName   = "/daemon.ContainerService/ContainersList"
 )
 
 // ContainerServiceClient is the client API for ContainerService service.
@@ -37,6 +38,7 @@ type ContainerServiceClient interface {
 	RemoveContainer(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*RemoveResponse, error)
 	InspectContainer(ctx context.Context, in *InspectRequest, opts ...grpc.CallOption) (*InspectResponse, error)
 	AttachContainer(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[AttachRequest, AttachResponse], error)
+	ContainersList(ctx context.Context, in *PsRequest, opts ...grpc.CallOption) (*PsResponse, error)
 }
 
 type containerServiceClient struct {
@@ -110,6 +112,16 @@ func (c *containerServiceClient) AttachContainer(ctx context.Context, opts ...gr
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ContainerService_AttachContainerClient = grpc.BidiStreamingClient[AttachRequest, AttachResponse]
 
+func (c *containerServiceClient) ContainersList(ctx context.Context, in *PsRequest, opts ...grpc.CallOption) (*PsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PsResponse)
+	err := c.cc.Invoke(ctx, ContainerService_ContainersList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ContainerServiceServer is the server API for ContainerService service.
 // All implementations must embed UnimplementedContainerServiceServer
 // for forward compatibility.
@@ -120,6 +132,7 @@ type ContainerServiceServer interface {
 	RemoveContainer(context.Context, *RemoveRequest) (*RemoveResponse, error)
 	InspectContainer(context.Context, *InspectRequest) (*InspectResponse, error)
 	AttachContainer(grpc.BidiStreamingServer[AttachRequest, AttachResponse]) error
+	ContainersList(context.Context, *PsRequest) (*PsResponse, error)
 	mustEmbedUnimplementedContainerServiceServer()
 }
 
@@ -147,6 +160,9 @@ func (UnimplementedContainerServiceServer) InspectContainer(context.Context, *In
 }
 func (UnimplementedContainerServiceServer) AttachContainer(grpc.BidiStreamingServer[AttachRequest, AttachResponse]) error {
 	return status.Error(codes.Unimplemented, "method AttachContainer not implemented")
+}
+func (UnimplementedContainerServiceServer) ContainersList(context.Context, *PsRequest) (*PsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ContainersList not implemented")
 }
 func (UnimplementedContainerServiceServer) mustEmbedUnimplementedContainerServiceServer() {}
 func (UnimplementedContainerServiceServer) testEmbeddedByValue()                          {}
@@ -266,6 +282,24 @@ func _ContainerService_AttachContainer_Handler(srv interface{}, stream grpc.Serv
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ContainerService_AttachContainerServer = grpc.BidiStreamingServer[AttachRequest, AttachResponse]
 
+func _ContainerService_ContainersList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContainerServiceServer).ContainersList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContainerService_ContainersList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContainerServiceServer).ContainersList(ctx, req.(*PsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ContainerService_ServiceDesc is the grpc.ServiceDesc for ContainerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -292,6 +326,10 @@ var ContainerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "InspectContainer",
 			Handler:    _ContainerService_InspectContainer_Handler,
+		},
+		{
+			MethodName: "ContainersList",
+			Handler:    _ContainerService_ContainersList_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

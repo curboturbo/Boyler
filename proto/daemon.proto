@@ -16,6 +16,8 @@ service ContainerService {
     rpc InspectContainer(InspectRequest) returns (InspectResponse);
 
     rpc AttachContainer(stream AttachRequest) returns (stream AttachResponse);
+
+    rpc ContainersList(PsRequest) returns (PsResponse);
 }
 
 service ImageService {
@@ -156,6 +158,22 @@ message AttachResponse {
 
 message ExitStatus {
     int32 code = 1;
+}
+
+message PsResponse {
+  repeated ContainerListItem containers = 1;
+}
+
+message ContainerListItem {
+  string container_id = 1;
+  string image = 2;
+  string command = 3;
+  string created = 4;
+  string status = 5;
+  string name = 7;
+}
+
+message PsRequest {
 }
 
 

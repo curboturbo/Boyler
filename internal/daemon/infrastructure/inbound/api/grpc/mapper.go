@@ -90,3 +90,16 @@ func MapInsRequestToCommand(req *gen.InspectRequest) application.InspectContaine
 		ContainerContext: contCtx,
 	}
 }
+
+func MapAttachRequest(msg *gen.AttachRequest) *application.AttachInboundEvent {
+	switch p := msg.Payload.(type) {
+	case *gen.AttachRequest_Init:
+		return &application.AttachInboundEvent{
+			Init: &application.AttachInit{ContainerID: p.Init.ContainerId},
+		}
+	case *gen.AttachRequest_Stdin:
+		return &application.AttachInboundEvent{Stdin: p.Stdin}
+	default:
+		return &application.AttachInboundEvent{}
+	}
+}

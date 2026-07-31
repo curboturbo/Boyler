@@ -108,6 +108,10 @@ type InspectContainerCommand struct {
 	ContainerContext
 }
 
+type PsCommand struct{
+	mock bool
+}
+
 type OutputType string
 
 const (
@@ -120,4 +124,18 @@ type ContainerOutput struct {
 	Type     OutputType
 	Data     []byte
 	ExitCode int32
+}
+
+type AttachInboundEvent struct {
+	Init   *AttachInit
+	Stdin  []byte
+	Resize *AttachResize
+}
+
+type AttachInit struct {
+	ContainerID string
+}
+
+type AttachResize struct {
+	Cols, Rows uint16
 }

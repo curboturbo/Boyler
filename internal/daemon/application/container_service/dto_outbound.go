@@ -2,7 +2,6 @@ package application
 
 import (
 	"boyler/internal/daemon/core"
-	"io"
 )
 
 type ContainerContext struct {
@@ -52,9 +51,11 @@ type InspectContainerResponse struct {
 	Resources   core.Restriction
 }
 
-type AttachSession struct {
-    Stdin  io.WriteCloser
-    Stdout io.Reader
-    Stderr io.Reader
-    Wait   func() error
+
+type AttachOutboundEvent struct {
+	Stdout []byte
+}
+
+type PsResponse struct{
+	ContainerList []*InspectContainerResponse
 }

@@ -5,10 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"syscall"
+	"strconv"
+
+	"github.com/creack/pty"
 )
 
 type myRunc struct {
@@ -86,4 +90,42 @@ func (c *myRunc) State(ctx context.Context, id string) (*runtime.State, error) {
 		return &runtime.State{}, fmt.Errorf("Unknown error during execution: %w", err)
 	}
 	return &containerState, nil
+}
+
+
+type ptyProcess struct {
+	io.ReadWriteCloser
+	cmd *exec.Cmd
+}
+
+func (p *ptyProcess) Close() error {
+	err := p.ReadWriteCloser.Close()
+	_ = p.cmd.Wait() 
+	return err
+}
+
+
+func (r *myRunc) ExecPTY(ctx context.Context, pid int64) (io.ReadWriteCloser, error) {
+	cmd := exec.CommandContext(
+		ctx,
+		"sudo",
+		"nsenter",
+		"-t", strconv.FormatInt(pid, 10),
+		"-m",
+		"-u",
+		"-i",
+		"-n",
+		"-p",
+		"-r",
+		"-w",
+		"/bin/sh",
+	)
+	file, err := pty.Start(cmd)
+	if err != nil {
+		return nil, err
+	}
+	return &ptyProcess{
+		ReadWriteCloser: file,
+		cmd:             cmd,
+	},  nil
 }

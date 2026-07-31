@@ -60,6 +60,7 @@ func (c *Creator) ExecuteCreate(ctx context.Context, cmd CreateContainerCommand)
 		WithId(id),
 		WithPid(int64(pid)),
 		WithTime(createTime, startTime),
+		WithCoreName(cmd.ContainerName),
 	)
 	c.store.Save(ctx, *containerCore)
 

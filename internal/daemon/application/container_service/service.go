@@ -1,6 +1,9 @@
 package application
 
-import "context"
+import (
+	"boyler/internal/daemon/core"
+	"context"
+)
 
 type ContainerService interface {
 	CreateAndStart(ctx context.Context, cmd CreateContainerCommand) (*CreateContainerResponse, error)
@@ -11,7 +14,8 @@ type ContainerService interface {
 	Remove(ctx context.Context, cmd RemoveContainerCommand) (*RemoveContainerResponse, error)
 	Restart(ctx context.Context, cmd RestartContainerCommand) (*RestartContainerResponse, error)
 	Inspect(ctx context.Context, cmd InspectContainerCommand) (*InspectContainerResponse, error)
-	Attach(ctx context.Context, cmd AttachContainerCommand) (*AttachSession, error) // most harders part all grpc
+	PsInspect(ctx context.Context, cmd PsCommand) ([]*core.Container, error)
+	Attach(ctx context.Context, stream AttachStream) error
 }
 
 type containerService struct {
@@ -66,10 +70,14 @@ func (c *containerService) Restart(ctx context.Context, cmd RestartContainerComm
 	return c.restarter.Execute(ctx, cmd)
 }
 
-func (c *containerService) Attach(ctx context.Context, cmd AttachContainerCommand) (*AttachSession, error) {
-	return c.attacher.Execute(ctx, cmd)
+func (c *containerService) Attach(ctx context.Context, stream AttachStream) error{
+	return c.attacher.Execute(ctx, stream)
 }
 
 func (c *containerService) Inspect(ctx context.Context, cmd InspectContainerCommand) (*InspectContainerResponse, error) {
 	return c.cursor.Execute(ctx, cmd)
+}
+
+func (c *containerService) PsInspect(ctx context.Context, cmd PsCommand) ([]*core.Container, error) {
+	return c.cursor.Ps(ctx, cmd)
 }

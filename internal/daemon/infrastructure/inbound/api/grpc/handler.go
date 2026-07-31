@@ -1,10 +1,11 @@
 package grpc
 
 import (
-	"boyler/internal/daemon/application/container_service"
-	pb "boyler/internal/daemon/infrastructure/inbound/api/grpc/gen"
 	"context"
 	grpc "google.golang.org/grpc"
+
+	application "boyler/internal/daemon/application/container_service"
+	pb "boyler/internal/daemon/infrastructure/inbound/api/grpc/gen"
 )
 
 type DaemonHandler struct {
@@ -52,12 +53,6 @@ func (d *DaemonHandler) RemoveContainer(ctx context.Context, req *pb.RemoveReque
 	return MapRemoveResponseToProto(serviveResponse), nil
 }
 
-
-func (d *DaemonHandler) AttachContainer(req grpc.BidiStreamingServer[pb.AttachRequest, pb.AttachResponse]) error {
-	return nil
-}
-
-
 func (d *DaemonHandler) InspectContainer(ctx context.Context, req *pb.InspectRequest) (*pb.InspectResponse, error) {
 	command := MapInsRequestToCommand(req)
 	serviceResponse, err := d.containerService.Inspect(ctx, command)
@@ -65,4 +60,20 @@ func (d *DaemonHandler) InspectContainer(ctx context.Context, req *pb.InspectReq
 		return &pb.InspectResponse{}, err
 	}
 	return MapInspectResponseToProto(serviceResponse), nil
+}
+
+func (d *DaemonHandler) AttachContainer(req grpc.BidiStreamingServer[pb.AttachRequest, pb.AttachResponse]) error {
+	return d.containerService.Attach(req.Context(), &grpcStream{stream:req})
+}
+
+func (d *DaemonHandler) ContainersList(ctx context.Context, req *pb.PsRequest) (*pb.PsResponse, error) {
+	command := application.PsCommand{}
+	serviceResponse, err := d.containerService.PsInspect(ctx, command)
+	if err != nil{
+		return &pb.PsResponse{}, err
+	}
+	containers := MapPsResponseToProto(serviceResponse)
+	return &pb.PsResponse{
+		Containers: containers,
+	}, nil
 }

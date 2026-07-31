@@ -20,7 +20,7 @@ ARCH = amd_64
 compile:
 	go build -o bin/boyler ./cmd/boyler
 	go build -o bin/myrunc ./cmd/myrunc
-	go build -o bin/daemon_$(OS)_$(ARCH) ./cmd/boylerd
+	go build -o bin/daemon_boyler_$(OS) ./cmd/boylerd
 	@echo "Binary files was created"
 
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -41,6 +41,11 @@ stop:
 	export $$(cat $(ROOT_DIR).env | xargs) && sudo -E $(ROOT_DIR)bin/boyler stop 8e6ff240-a1a5-4642-a58e-1a53b3222ee0
 	@echo "Test run finished"
 
+.PHONY: remove
+remove:
+	export $$(cat $(ROOT_DIR).env | xargs) && sudo -E $(ROOT_DIR)bin/boyler remove 8e6ff240-a1a5-4642-a58e-1a53b3222ee0
+
+
 
 .PHONY: start
 start:
@@ -53,6 +58,15 @@ inspect:
 	export $$(cat $(ROOT_DIR).env | xargs) && sudo -E $(ROOT_DIR)bin/boyler inspect 8e6ff240-a1a5-4642-a58e-1a53b3222ee0
 	@echo "Test run finished"
 
+.PHONY: exec
+exec:
+	export $$(cat $(ROOT_DIR).env | xargs) && sudo -E $(ROOT_DIR)bin/boyler exec -it 8e6ff240-a1a5-4642-a58e-1a53b3222ee0
+	@echo "Test run finished"
+
+.PHONY: ps
+ps:
+	export $$(cat $(ROOT_DIR).env | xargs) && sudo -E $(ROOT_DIR)bin/boyler ps
+	@echo "Test run finished"
 
 
 .PHONY: cond

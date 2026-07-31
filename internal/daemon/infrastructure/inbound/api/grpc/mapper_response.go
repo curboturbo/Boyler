@@ -2,7 +2,9 @@ package grpc
 
 import (
 	"boyler/internal/daemon/application/container_service"
+	"boyler/internal/daemon/core"
 	"boyler/internal/daemon/infrastructure/inbound/api/grpc/gen"
+	"time"
 )
 
 func MapCreateResponceToProto(resp *application.CreateContainerResponse) *gen.CreateResponse {
@@ -53,4 +55,25 @@ func MapInspectResponseToProto(resp *application.InspectContainerResponse) *gen.
 			},
 		},
 	}
+}
+
+func MapAttachResponse(ev *application.AttachOutboundEvent) *gen.AttachResponse {
+	return &gen.AttachResponse{
+		Payload: &gen.AttachResponse_Stdout{Stdout: ev.Stdout},
+	}
+}
+
+func MapPsResponseToProto(resp []*core.Container) []*gen.ContainerListItem {
+	items := make([]*gen.ContainerListItem, 0, len(resp))
+	for _, container := range resp {
+		items = append(items, &gen.ContainerListItem{
+			ContainerId: container.ID,
+			Image:       container.ImageID,
+			Command:     "/bin/sh",
+			Created:     container.CreatedAt.Format(time.RFC3339),
+			Status:      string(container.Status),
+			Name:        container.Name,
+		})
+	}
+	return items
 }
