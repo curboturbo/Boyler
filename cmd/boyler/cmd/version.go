@@ -1,0 +1,21 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+)
+
+func init() {
+	rootCmd.AddCommand(versionCmd)
+
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Show current version of app",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Current version - %v\n", os.Getenv("VERSION"))
+	},
+}

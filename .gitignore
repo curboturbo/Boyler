@@ -1,0 +1,12 @@
+/lib/
+/bin/
+
+*.tar
+*.tar.gz
+
+certs/*.key
+certs/*.crt
+certs/*.pem
+
+.env
+privateMakefile
