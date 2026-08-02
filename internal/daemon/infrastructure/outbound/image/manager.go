@@ -3,6 +3,7 @@ package image
 import (
 	"boyler/internal/daemon/core"
 	domain "boyler/internal/daemon/core"
+	string_pkg "boyler/pkg/string"
 	"boyler/pkg/files"
 	"boyler/pkg/logger"
 	"context"
@@ -10,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
 )
 
 type imageManager struct {
@@ -26,33 +28,47 @@ func NewImageManager(imageDir string) ImageManager {
 }
 
 func (i *imageManager) Extract(ctx context.Context, name string, unpackDir string) error {
-    log := logger.FromContext(ctx)
-    log.Debug("start extract image", "name",name)
-    archivePath := filepath.Join(i.imageDir, name, name+".tar.gz")
-    err := files.Unzip(archivePath, unpackDir)
-    if err != nil {
-        return err
-    }
-    log.Info("image extracted")
-    return nil
+	log := logger.FromContext(ctx)
+	safeName := string_pkg.SanitizeImageName(name)
+	unpackDir = filepath.Join(unpackDir,safeName, "rootfs")
+
+	if err := os.MkdirAll(unpackDir, 0755); err != nil {
+    	return fmt.Errorf("create rootfs: %w", err)
+	}
+	log.Debug("start extract image", "name", safeName)
+	imageDir := filepath.Join(i.imageDir, safeName)
+	num, err := readLayersInfo(imageDir)
+	if err != nil {
+		return fmt.Errorf("read layers info: %w", err)
+	}
+	for idx := 0; idx < num; idx++ {
+		layerPath := filepath.Join(imageDir, fmt.Sprintf("layer_%d.tar.gz", idx))
+		log.Debug("extracting layer", "path", layerPath)
+		if err := files.Unzip(layerPath, unpackDir); err != nil {
+			return fmt.Errorf("unzip layer %s: %w", layerPath, err)
+		}
+	}
+	log.Info("image extracted", "layers", num)
+	return nil
 }
 
 func (i *imageManager) IsExtracted(ctx context.Context, name string) bool {
     log := logger.FromContext(ctx)
-    log.Debug("check is image extractred", "name",name)
-    rootfsPath := filepath.Join(i.imageDir, name, "rootfs")
+	safeName := string_pkg.SanitizeImageName(name)
+    log.Debug("check is image extractred", "name",safeName)
+    rootfsPath := filepath.Join(i.imageDir, safeName, "rootfs")
     info, err := os.Stat(rootfsPath)
     if err != nil {
         if os.IsNotExist(err) {
-            log.Warn("image not extracted yet","image",name)
+            log.Warn("image not extracted yet","image",safeName)
         }else{
-            log.Warn("failed to check if image is extracted","image",name)
+            log.Warn("failed to check if image is extracted","image",safeName)
         }
         return false
     }
     
     if !info.IsDir() {
-        log.Warn("rootfs exists but is not a directory","image",name)
+        log.Warn("rootfs exists but is not a directory","image",safeName)
         return false
     }
     return true
@@ -141,4 +157,18 @@ func (i *imageManager) Pull(ctx context.Context, name string, ch chan *core.Pull
         return fmt.Errorf("Failed to fetch image: %v", err)
     }
 	return nil
+}
+
+
+func readLayersInfo(dir string) (int, error) {
+	path := filepath.Join(dir, layersInfoFileName)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, fmt.Errorf("read layers info: %w", err)
+    }
+	var info layersInfo
+	if err := json.Unmarshal(data, &info); err != nil {
+		return 0, fmt.Errorf("unmarshal layers info: %w", err)
+	}
+	return info.Num, nil
 }

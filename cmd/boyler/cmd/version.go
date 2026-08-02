@@ -16,6 +16,6 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show current version of app",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Current version - %v", os.Getenv("VERSION"))
+		fmt.Printf("Current version - %v\n", os.Getenv("VERSION"))
 	},
 }

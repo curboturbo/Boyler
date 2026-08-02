@@ -25,6 +25,7 @@ var execCmd = &cobra.Command{
 	Short: "Execute shell inside container and stream from daemon. To escape send SIGTERM signal (Ctrl+C)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		loadEnv()
 		containerID := args[0]
 		client, conn, err := NewGrpcDaemonClient()
 		if err != nil {

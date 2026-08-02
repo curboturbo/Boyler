@@ -22,8 +22,8 @@ var pull = &cobra.Command{
 	Short: "Pull image from docker registry",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		loadEnv()
 		image := args[0]
-
 		client, conn, err := NewGrpcDaemonPullingClient()
 		if err != nil {
 			return fmt.Errorf("connecting to daemon: %w", err)

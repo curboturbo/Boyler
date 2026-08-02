@@ -84,7 +84,7 @@ func (d *DaemonHandler) ContainersList(ctx context.Context, req *pb.PsRequest) (
 
 func (d *DaemonHandler) PullImage(req *pb.PullImageRequest, stream pb.ImageService_PullImageServer) error {
 	ctx := stream.Context()
-	return d.imageService.Pull(ctx,req.GetImageIdentity(), &grpcProgressStream{stream: stream})
+	return d.imageService.Pull(ctx, req.GetImageIdentity(), &grpcProgressStream{stream: stream})
 }
 
 func (d *DaemonHandler) RemoveImage(ctx context.Context, req *pb.RemoveImageRequest) (*pb.RemoveImageResponse, error) {

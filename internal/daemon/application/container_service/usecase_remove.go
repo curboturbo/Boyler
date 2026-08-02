@@ -49,7 +49,9 @@ func (r *Remover) Execute(ctx context.Context, cmd RemoveContainerCommand) (*Rem
 	if err := r.network.FreeIpAddress(ctx, cmd.ID); err != nil {
 		return nil, err
 	}
-
+	if err := r.store.Delete(ctx, cmd.ID); err != nil {
+		return nil, &core.InternalDaemonError{Err: err, Op:"execute"}
+	}
 	return &RemoveContainerResponse{
 		ContainerContext: ContainerContext{ID: cmd.ID},
 	}, nil

@@ -24,6 +24,7 @@ var stopCmd = &cobra.Command{
     Short: "Stop container",
     Args:  cobra.MinimumNArgs(1),
     Run: func(cmd *cobra.Command, args []string) {
+        loadEnv()
         id := args[0]
         client, conn, err := NewGrpcDaemonClient()
         if err != nil {

@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"time"
+	"github.com/google/uuid"
 )
 
 type Creator struct {
@@ -43,12 +44,12 @@ func NewCreator(d Deps) *Creator {
 
 
 func (c *Creator) ExecuteCreate(ctx context.Context, cmd CreateContainerCommand) (*CreateContainerResponse, error) {
-	// id = uuid.New().String()
-	id := "8e6ff240-a1a5-4642-a58e-1a53b3222ee0" // using by default like test
+	id := uuid.New().String()
+	//id := "8e6ff240-a1a5-4642-a58e-1a53b3222ee0" // using by default like test
 
-	//if err := c.extractImage(ctx, cmd.ImageName); err != nil {
-	//	return nil, err
-	//}
+	if err := c.extractImage(ctx, cmd.ImageName); err != nil {
+		return nil, err
+	}
 
 	state, pid, createTime, startTime, err := c.provision(ctx, id, cmd.ImageName, &cmd.Limits)
 	if err != nil {

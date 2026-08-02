@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	string_pkg "boyler/pkg/string"
 )
 
 type overlayManager struct {
@@ -43,15 +44,16 @@ func (vm *overlayManager) CreateMountPoints(ctx context.Context, containerID str
 	return nil
 }
 
-func (vm *overlayManager) Mount(ctx context.Context,containerID string, imageName string) error {
+func (vm *overlayManager) Mount(ctx context.Context, containerID string, imageName string) error {
 	log := logger.FromContext(ctx)
-	log.Debug("start mount","containerID",containerID, "imageName", imageName)
+	safeName := string_pkg.SanitizeImageName(imageName)
+	log.Debug("start mount","containerID",containerID, "imageName", safeName)
 	containerPath := filepath.Join(vm.containerDir, containerID)
 
 	mergedDir := filepath.Join(containerPath, "merged")
 	upperDir := filepath.Join(containerPath, "upper")
 	workDir := filepath.Join(containerPath, "work")
-	lowerDir := filepath.Join(vm.imageDir,imageName,"rootfs")
+	lowerDir := filepath.Join(vm.imageDir, safeName, "rootfs")
 
 	if _, err := os.Stat(lowerDir); os.IsNotExist(err){
 		return err

@@ -44,7 +44,8 @@ var createCmd = &cobra.Command{
     Short: "Create a new container",
     Args:  cobra.MinimumNArgs(1),
     Run: func(cmd *cobra.Command, args []string) {
-        imageIdentity := args[0]
+        imageIdentity := strings.ReplaceAll(args[0], ":", "_")
+        loadEnv()
         var containerArgs []string
         if len(args) > 1 {
             containerArgs = args[1:]

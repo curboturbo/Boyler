@@ -19,7 +19,7 @@ var psCmd = &cobra.Command{
 	Use:   "ps",
 	Short: "Show all containers",
 	Run: func(cmd *cobra.Command, args []string) {
-
+		loadEnv()
 		client, conn, err := NewGrpcDaemonClient()
 		if err != nil {
 			fmt.Printf("Error connecting to daemon: %v\n", err)

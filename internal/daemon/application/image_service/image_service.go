@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// интерфейс для grpc
+
 type Stream interface{
 	Send(*core.PullingEvent) error
 }

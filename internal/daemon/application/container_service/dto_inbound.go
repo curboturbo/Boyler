@@ -21,6 +21,7 @@ func WithImage(image string) CreateContainerOption {
 	}
 }
 
+
 func WithHostname(hostname string) CreateContainerOption {
 	return func(c *CreateContainerCommand) {
 		c.Hostname = hostname
@@ -70,7 +71,6 @@ func NewCreateContainerCommand(opts ...CreateContainerOption) CreateContainerCom
 	for _, opt := range opts {
 		opt(&cmd)
 	}
-
 	return cmd
 }
 

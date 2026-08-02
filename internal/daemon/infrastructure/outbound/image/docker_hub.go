@@ -3,6 +3,7 @@ package image
 import (
 	"boyler/internal/daemon/core"
 	logger "boyler/pkg/logger"
+	pkg_string "boyler/pkg/string"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"time"
 )
 
+const layersInfoFileName = "layers.json"
 
 type DockerHubPuller struct {
 	HTTPClient *http.Client
@@ -153,11 +155,17 @@ func (p *DockerHubPuller) Pull(ctx context.Context, ref string, destDir string) 
 			return "", err
 		}
 	}
-
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return "", err
 	}
+	safeName := pkg_string.SanitizeImageName(ref)
+	imagePath := filepath.Join(destDir, safeName)
+	if err := p.isExistOr(imagePath); err != nil {
+		return "", err
+	}
+	num := 0
 	for i, layer := range manifest.Layers {
+		num +=1
 		blobURL := fmt.Sprintf("https://registry-1.docker.io/v2/%s/blobs/%s",repo,layer.Digest)
 		bReq, err := http.NewRequestWithContext(ctx,http.MethodGet,blobURL,nil,)
 		if err != nil {
@@ -174,13 +182,12 @@ func (p *DockerHubPuller) Pull(ctx context.Context, ref string, destDir string) 
 			return "", fmt.Errorf("download layer %s failed: %s",layer.Digest,bResp.Status)
 		}
 		fileName := fmt.Sprintf("layer_%d.tar.gz",i)
-		outPath := filepath.Join(destDir,fileName)
+		outPath := filepath.Join(imagePath, fileName)
 		outFile, err := os.Create(outPath)
 		if err != nil {
 			bResp.Body.Close()
 			return "", err
 		}
-
 		total := bResp.ContentLength
 		var downloaded int64
 		buffer := make([]byte, 1024*1024)
@@ -225,7 +232,35 @@ func (p *DockerHubPuller) Pull(ctx context.Context, ref string, destDir string) 
 				Total: total,
 			}
 	}
+	createLayersInfo(num,imagePath)
 	return digest, nil
+}
+
+func (p *DockerHubPuller) isExistOr(path string) error {
+    if _, err := os.Stat(path); err == nil {
+        return fmt.Errorf("image has already been downloaded")
+    } else if !os.IsNotExist(err) {
+        return err
+    }
+    if err := os.MkdirAll(path, 0755); err != nil {
+        return fmt.Errorf("failed to create directory: %w", err)
+    }
+    return nil
+}
+
+
+func createLayersInfo(num int, saveDir string) error {
+	info := layersInfo{Num: num}
+	data, err := json.MarshalIndent(info, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal layers info: %w", err)
+	}
+	path := filepath.Join(saveDir, layersInfoFileName)
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("write layers info: %w", err)
+	}
+
+	return nil
 }
 
 type ociDescriptor struct {
@@ -249,5 +284,9 @@ type ociIndexEntry struct {
 
 type ociIndex struct {
 	Manifests []ociIndexEntry `json:"manifests"`
+}
+
+type layersInfo struct {
+	Num int `json:"num"`
 }
 
