@@ -10,14 +10,17 @@ import (
 )
 
 func main() {
-	daemon, err := NewDaemonFactoryFromEnv().NewDaemon()
+	factory := NewDaemonFactoryFromEnv()
+	containerService, err := factory.NewContainerService()
+	if err != nil { panic(fmt.Sprintf("CANNOT CREATE DEAMON: %v", err)) }
+	imageService, err := factory.NewImageService()
 	if err != nil { panic(fmt.Sprintf("CANNOT CREATE DEAMON: %v", err)) }
 	pprofConf:= server.ServerConfig{
 		Addr: os.Getenv("HTTP_PPROF_SOCKET"),
 		Log: logger.InitLogger(true),
 	}
 	server.StartPprofServer(pprofConf)
-	grpcServer := server.NewGrpcServer(os.Getenv("UNIX_SOCKET"), grpchandler.NewDaemonHandler(daemon))
+	grpcServer := server.NewGrpcServer(os.Getenv("UNIX_SOCKET"), grpchandler.NewDaemonHandler(containerService, imageService))
 	if err := grpcServer.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "daemon stopped: %v\n", err)
 	}

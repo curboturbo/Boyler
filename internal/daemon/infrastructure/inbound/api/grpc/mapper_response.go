@@ -77,3 +77,12 @@ func MapPsResponseToProto(resp []*core.Container) []*gen.ContainerListItem {
 	}
 	return items
 }
+
+func MapCoreToProtoEvent(event *core.PullingEvent) *gen.PullImageEvent{
+	return &gen.PullImageEvent{
+		Status: event.Status,
+		Layid: event.LayId,
+		Progress: event.Progress,
+		Total: event.Total,
+	}
+}

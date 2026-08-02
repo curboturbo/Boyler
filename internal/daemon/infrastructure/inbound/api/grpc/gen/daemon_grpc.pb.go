@@ -353,7 +353,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ImageServiceClient interface {
-	PullImage(ctx context.Context, in *PullImageRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PullImageResponse], error)
+	PullImage(ctx context.Context, in *PullImageRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PullImageEvent], error)
 	RemoveImage(ctx context.Context, in *RemoveImageRequest, opts ...grpc.CallOption) (*RemoveImageResponse, error)
 	ListImages(ctx context.Context, in *ListImagesRequest, opts ...grpc.CallOption) (*ListImagesResponse, error)
 }
@@ -366,13 +366,13 @@ func NewImageServiceClient(cc grpc.ClientConnInterface) ImageServiceClient {
 	return &imageServiceClient{cc}
 }
 
-func (c *imageServiceClient) PullImage(ctx context.Context, in *PullImageRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PullImageResponse], error) {
+func (c *imageServiceClient) PullImage(ctx context.Context, in *PullImageRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PullImageEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &ImageService_ServiceDesc.Streams[0], ImageService_PullImage_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[PullImageRequest, PullImageResponse]{ClientStream: stream}
+	x := &grpc.GenericClientStream[PullImageRequest, PullImageEvent]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -383,7 +383,7 @@ func (c *imageServiceClient) PullImage(ctx context.Context, in *PullImageRequest
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ImageService_PullImageClient = grpc.ServerStreamingClient[PullImageResponse]
+type ImageService_PullImageClient = grpc.ServerStreamingClient[PullImageEvent]
 
 func (c *imageServiceClient) RemoveImage(ctx context.Context, in *RemoveImageRequest, opts ...grpc.CallOption) (*RemoveImageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -409,7 +409,7 @@ func (c *imageServiceClient) ListImages(ctx context.Context, in *ListImagesReque
 // All implementations must embed UnimplementedImageServiceServer
 // for forward compatibility.
 type ImageServiceServer interface {
-	PullImage(*PullImageRequest, grpc.ServerStreamingServer[PullImageResponse]) error
+	PullImage(*PullImageRequest, grpc.ServerStreamingServer[PullImageEvent]) error
 	RemoveImage(context.Context, *RemoveImageRequest) (*RemoveImageResponse, error)
 	ListImages(context.Context, *ListImagesRequest) (*ListImagesResponse, error)
 	mustEmbedUnimplementedImageServiceServer()
@@ -422,7 +422,7 @@ type ImageServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedImageServiceServer struct{}
 
-func (UnimplementedImageServiceServer) PullImage(*PullImageRequest, grpc.ServerStreamingServer[PullImageResponse]) error {
+func (UnimplementedImageServiceServer) PullImage(*PullImageRequest, grpc.ServerStreamingServer[PullImageEvent]) error {
 	return status.Error(codes.Unimplemented, "method PullImage not implemented")
 }
 func (UnimplementedImageServiceServer) RemoveImage(context.Context, *RemoveImageRequest) (*RemoveImageResponse, error) {
@@ -457,11 +457,11 @@ func _ImageService_PullImage_Handler(srv interface{}, stream grpc.ServerStream) 
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(ImageServiceServer).PullImage(m, &grpc.GenericServerStream[PullImageRequest, PullImageResponse]{ServerStream: stream})
+	return srv.(ImageServiceServer).PullImage(m, &grpc.GenericServerStream[PullImageRequest, PullImageEvent]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ImageService_PullImageServer = grpc.ServerStreamingServer[PullImageResponse]
+type ImageService_PullImageServer = grpc.ServerStreamingServer[PullImageEvent]
 
 func _ImageService_RemoveImage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveImageRequest)

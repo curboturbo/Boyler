@@ -2,19 +2,23 @@ package grpc
 
 import (
 	"context"
+
 	grpc "google.golang.org/grpc"
 
 	application "boyler/internal/daemon/application/container_service"
+	imageservice "boyler/internal/daemon/application/image_service"
 	pb "boyler/internal/daemon/infrastructure/inbound/api/grpc/gen"
 )
 
 type DaemonHandler struct {
 	containerService application.ContainerService
 	pb.UnimplementedContainerServiceServer
+	imageService imageservice.ImageService
+	pb.UnimplementedImageServiceServer
 }
 
-func NewDaemonHandler(containerService application.ContainerService) *DaemonHandler {
-	return &DaemonHandler{containerService: containerService}
+func NewDaemonHandler(containerService application.ContainerService, imageService imageservice.ImageService) *DaemonHandler {
+	return &DaemonHandler{containerService: containerService, imageService: imageService}
 }
 
 func (d *DaemonHandler) CreateContainer(ctx context.Context, req *pb.CreateRequest) (*pb.CreateResponse, error) {
@@ -76,4 +80,19 @@ func (d *DaemonHandler) ContainersList(ctx context.Context, req *pb.PsRequest) (
 	return &pb.PsResponse{
 		Containers: containers,
 	}, nil
+}
+
+func (d *DaemonHandler) PullImage(req *pb.PullImageRequest, stream pb.ImageService_PullImageServer) error {
+	ctx := stream.Context()
+	return d.imageService.Pull(ctx,req.GetImageIdentity(), &grpcProgressStream{stream: stream})
+}
+
+func (d *DaemonHandler) RemoveImage(ctx context.Context, req *pb.RemoveImageRequest) (*pb.RemoveImageResponse, error) {
+	// TODO: реализовать заглушку для удаления образа
+	return &pb.RemoveImageResponse{}, nil
+}
+
+func (d *DaemonHandler) ListImages(ctx context.Context, req *pb.ListImagesRequest) (*pb.ListImagesResponse, error) {
+	// TODO: реализовать заглушку для получения списка образов
+	return &pb.ListImagesResponse{}, nil
 }

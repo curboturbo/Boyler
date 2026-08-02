@@ -1,9 +1,11 @@
 package image
 
 import (
+	"boyler/internal/daemon/core"
 	domain "boyler/internal/daemon/core"
 	"context"
 )
+
 
 type ImageManager interface {
 	// Extract unpack .tar.gz archive
@@ -25,5 +27,5 @@ type ImageManager interface {
 	List(ctx context.Context) ([]*domain.Image, error)
 
 	// Pull download images from dockerHub
-	Pull(ctx context.Context, name string) (*domain.Image, error)
+	Pull(ctx context.Context, name string, ch chan *core.PullingEvent) error
 }

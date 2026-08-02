@@ -21,7 +21,7 @@ service ContainerService {
 }
 
 service ImageService {
-  rpc PullImage (PullImageRequest) returns (stream PullImageResponse);
+  rpc PullImage (PullImageRequest) returns (stream PullImageEvent);
   
   rpc RemoveImage (RemoveImageRequest) returns (RemoveImageResponse);
 
@@ -104,10 +104,11 @@ message PullImageRequest {
     string image_identity = 1;
 }
 
-message PullImageResponse {
+message PullImageEvent {
     string status = 1;
-    int64 progress = 2;
-    int64 total = 3;
+    string layid = 2;
+    int64 progress = 3;
+    int64 total = 4;
 }
 
 message RemoveImageRequest {

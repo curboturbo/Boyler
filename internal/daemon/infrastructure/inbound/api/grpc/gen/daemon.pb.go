@@ -805,29 +805,30 @@ func (x *PullImageRequest) GetImageIdentity() string {
 	return ""
 }
 
-type PullImageResponse struct {
+type PullImageEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
-	Progress      int64                  `protobuf:"varint,2,opt,name=progress,proto3" json:"progress,omitempty"`
-	Total         int64                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	Layid         string                 `protobuf:"bytes,2,opt,name=layid,proto3" json:"layid,omitempty"`
+	Progress      int64                  `protobuf:"varint,3,opt,name=progress,proto3" json:"progress,omitempty"`
+	Total         int64                  `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PullImageResponse) Reset() {
-	*x = PullImageResponse{}
+func (x *PullImageEvent) Reset() {
+	*x = PullImageEvent{}
 	mi := &file_daemon_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PullImageResponse) String() string {
+func (x *PullImageEvent) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PullImageResponse) ProtoMessage() {}
+func (*PullImageEvent) ProtoMessage() {}
 
-func (x *PullImageResponse) ProtoReflect() protoreflect.Message {
+func (x *PullImageEvent) ProtoReflect() protoreflect.Message {
 	mi := &file_daemon_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -839,26 +840,33 @@ func (x *PullImageResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PullImageResponse.ProtoReflect.Descriptor instead.
-func (*PullImageResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use PullImageEvent.ProtoReflect.Descriptor instead.
+func (*PullImageEvent) Descriptor() ([]byte, []int) {
 	return file_daemon_proto_rawDescGZIP(), []int{14}
 }
 
-func (x *PullImageResponse) GetStatus() string {
+func (x *PullImageEvent) GetStatus() string {
 	if x != nil {
 		return x.Status
 	}
 	return ""
 }
 
-func (x *PullImageResponse) GetProgress() int64 {
+func (x *PullImageEvent) GetLayid() string {
+	if x != nil {
+		return x.Layid
+	}
+	return ""
+}
+
+func (x *PullImageEvent) GetProgress() int64 {
 	if x != nil {
 		return x.Progress
 	}
 	return 0
 }
 
-func (x *PullImageResponse) GetTotal() int64 {
+func (x *PullImageEvent) GetTotal() int64 {
 	if x != nil {
 		return x.Total
 	}
@@ -1660,11 +1668,12 @@ const file_daemon_proto_rawDesc = "" +
 	"\tresources\x18\n" +
 	" \x01(\v2\x16.daemon.ResourceLimitsR\tresources\"9\n" +
 	"\x10PullImageRequest\x12%\n" +
-	"\x0eimage_identity\x18\x01 \x01(\tR\rimageIdentity\"]\n" +
-	"\x11PullImageResponse\x12\x16\n" +
-	"\x06status\x18\x01 \x01(\tR\x06status\x12\x1a\n" +
-	"\bprogress\x18\x02 \x01(\x03R\bprogress\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x03R\x05total\"/\n" +
+	"\x0eimage_identity\x18\x01 \x01(\tR\rimageIdentity\"p\n" +
+	"\x0ePullImageEvent\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x14\n" +
+	"\x05layid\x18\x02 \x01(\tR\x05layid\x12\x1a\n" +
+	"\bprogress\x18\x03 \x01(\x03R\bprogress\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x03R\x05total\"/\n" +
 	"\x12RemoveImageRequest\x12\x19\n" +
 	"\bimage_id\x18\x01 \x01(\tR\aimageId\"-\n" +
 	"\x13RemoveImageResponse\x12\x16\n" +
@@ -1717,9 +1726,9 @@ const file_daemon_proto_rawDesc = "" +
 	"\x0fRemoveContainer\x12\x15.daemon.RemoveRequest\x1a\x16.daemon.RemoveResponse\x12C\n" +
 	"\x10InspectContainer\x12\x16.daemon.InspectRequest\x1a\x17.daemon.InspectResponse\x12D\n" +
 	"\x0fAttachContainer\x12\x15.daemon.AttachRequest\x1a\x16.daemon.AttachResponse(\x010\x01\x127\n" +
-	"\x0eContainersList\x12\x11.daemon.PsRequest\x1a\x12.daemon.PsResponse2\xdf\x01\n" +
-	"\fImageService\x12B\n" +
-	"\tPullImage\x12\x18.daemon.PullImageRequest\x1a\x19.daemon.PullImageResponse0\x01\x12F\n" +
+	"\x0eContainersList\x12\x11.daemon.PsRequest\x1a\x12.daemon.PsResponse2\xdc\x01\n" +
+	"\fImageService\x12?\n" +
+	"\tPullImage\x12\x18.daemon.PullImageRequest\x1a\x16.daemon.PullImageEvent0\x01\x12F\n" +
 	"\vRemoveImage\x12\x1a.daemon.RemoveImageRequest\x1a\x1b.daemon.RemoveImageResponse\x12C\n" +
 	"\n" +
 	"ListImages\x12\x19.daemon.ListImagesRequest\x1a\x1a.daemon.ListImagesResponseB<Z:boyler/internal/daemon/infrastructure/inbound/api/grpc/genb\x06proto3"
@@ -1752,7 +1761,7 @@ var file_daemon_proto_goTypes = []any{
 	(*InspectRequest)(nil),      // 11: daemon.InspectRequest
 	(*InspectResponse)(nil),     // 12: daemon.InspectResponse
 	(*PullImageRequest)(nil),    // 13: daemon.PullImageRequest
-	(*PullImageResponse)(nil),   // 14: daemon.PullImageResponse
+	(*PullImageEvent)(nil),      // 14: daemon.PullImageEvent
 	(*RemoveImageRequest)(nil),  // 15: daemon.RemoveImageRequest
 	(*RemoveImageResponse)(nil), // 16: daemon.RemoveImageResponse
 	(*ListImagesRequest)(nil),   // 17: daemon.ListImagesRequest
@@ -1796,7 +1805,7 @@ var file_daemon_proto_depIdxs = []int32{
 	12, // 24: daemon.ContainerService.InspectContainer:output_type -> daemon.InspectResponse
 	23, // 25: daemon.ContainerService.AttachContainer:output_type -> daemon.AttachResponse
 	25, // 26: daemon.ContainerService.ContainersList:output_type -> daemon.PsResponse
-	14, // 27: daemon.ImageService.PullImage:output_type -> daemon.PullImageResponse
+	14, // 27: daemon.ImageService.PullImage:output_type -> daemon.PullImageEvent
 	16, // 28: daemon.ImageService.RemoveImage:output_type -> daemon.RemoveImageResponse
 	18, // 29: daemon.ImageService.ListImages:output_type -> daemon.ListImagesResponse
 	20, // [20:30] is the sub-list for method output_type

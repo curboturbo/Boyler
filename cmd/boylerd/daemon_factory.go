@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	service "boyler/internal/daemon/application/container_service"
+	imageservice "boyler/internal/daemon/application/image_service"
 	networkservice "boyler/internal/daemon/application/network_service"
 	image "boyler/internal/daemon/infrastructure/outbound/image"
 	limits "boyler/internal/daemon/infrastructure/outbound/limits"
@@ -28,12 +29,24 @@ type DaemonConfig struct {
 	Service        service.ServiceConfig
 }
 
+type SharedManager struct{
+	FS overlay.VolumeManager
+	Image image.ImageManager
+}
+
 type DaemonFactory struct {
 	config DaemonConfig
+	shared SharedManager
 }
 
 func NewDaemonFactory(config DaemonConfig) *DaemonFactory {
-	return &DaemonFactory{config: config}
+	return &DaemonFactory{
+		config: config,
+		shared: SharedManager{
+			FS:    overlay.NewOverlayManager(config.ImagesPath, config.ContainersPath),
+			Image: image.NewImageManager(config.ImagesPath),
+		},
+	}
 }
 
 func NewDaemonFactoryFromEnv() *DaemonFactory {
@@ -64,7 +77,7 @@ func NewDaemonFactoryFromEnv() *DaemonFactory {
 }
 
 
-func (d *DaemonFactory) NewDaemon() (service.ContainerService, error) {
+func (d *DaemonFactory) NewContainerService() (service.ContainerService, error) {
 	if d == nil {
 		return nil, fmt.Errorf("daemon factory is nil")
 	}
@@ -79,8 +92,8 @@ func (d *DaemonFactory) NewDaemon() (service.ContainerService, error) {
 
 	return service.NewContainerService(service.Deps{
 		Runtime:       runtime.NewMyRunc(d.config.RuntimeBinPath),
-		FS:            overlay.NewOverlayManager(d.config.ImagesPath, d.config.ContainersPath),
-		Images:        image.NewImageManager(d.config.ImagesPath),
+		FS:            d.shared.FS,
+		Images:        d.shared.Image,
 		Network:       networkService,
 		Reg:           registry.NewRepo(),
 		Store:         storage.NewContainerRepository(),
@@ -89,6 +102,17 @@ func (d *DaemonFactory) NewDaemon() (service.ContainerService, error) {
 		Conf:          d.config.Service,
 	}), nil
 }
+
+func (d *DaemonFactory) NewImageService() (imageservice.ImageService, error) {
+    return imageservice.NewImageService(
+        imageservice.ImageSerivceConfig{
+            UnpackDir: d.config.Service.UnpackDir,
+        },
+        d.shared.Image,
+        d.shared.FS,
+    ), nil
+}
+
 
 func envOr(node1 string, node2 string) string{ return filepath.Join(node1,node2) }
 

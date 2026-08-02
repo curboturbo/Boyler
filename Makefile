@@ -5,7 +5,7 @@ ROOT=/home/tema/Boyler
 clean-test:
 	-sudo umount -l /home/tema/Boyler/lib/containers/8e6ff240-a1a5-4642-a58e-1a53b3222ee0/merged # отмонируем merged от overlay
 	-sudo rm -rf /home/tema/Boyler/lib/containers/8e6ff240-a1a5-4642-a58e-1a53b3222ee0
-	-sudo rm -rf /home/tema/Boyler/lib/images/alpine/rootfs
+	-sudo rm -rf /home/tema/Boyler/lib/images/python-alpine/rootfs
 	-sudo rm -rf /var/run/myrunc/8e6ff240-a1a5-4642-a58e-1a53b3222ee0
 	-sudo rm /var/log/boyler_daemon.log
 	-sudo rm /tmp/daemon_grpc.sock
@@ -32,9 +32,14 @@ init:
 
 .PHONY: create
 create:
-	export $$(cat $(ROOT_DIR).env | xargs) && sudo -E $(ROOT_DIR)bin/boyler create alpine --name HELLO_WORLD
+	export $$(cat $(ROOT_DIR).env | xargs) && sudo -E $(ROOT_DIR)bin/boyler create python-alpine --name HELLO_WORLD
 	@echo "Test run finished"
 
+
+.PHONY: pull
+pull:
+	export $$(cat $(ROOT_DIR).env | xargs) && sudo -E $(ROOT_DIR)bin/boyler pull python:alpine
+	@echo "Test run finished"
 
 .PHONY: stop
 stop:

@@ -76,7 +76,7 @@ func receiveOutput(stream grpc.BidiStreamingClient[pb.AttachRequest, pb.AttachRe
 			fmt.Printf("Streaming terminated")
 			return
 		}
-		fmt.Printf("%s\n", resp.GetStdout())
+		fmt.Printf("%s\n", cleanANSI(resp.GetStdout()))
 	}
 }
 

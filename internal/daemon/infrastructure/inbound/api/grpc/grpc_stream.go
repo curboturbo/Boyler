@@ -1,10 +1,12 @@
 package grpc
 
-import(
-	pb "boyler/internal/daemon/infrastructure/inbound/api/grpc/gen"
-	grpc "google.golang.org/grpc"
+import (
 	"boyler/internal/daemon/application/container_service"
+	"boyler/internal/daemon/core"
+	pb "boyler/internal/daemon/infrastructure/inbound/api/grpc/gen"
 	"fmt"
+
+	grpc "google.golang.org/grpc"
 )
 
 type grpcStream struct {
@@ -22,4 +24,18 @@ func (g *grpcStream) Receive() (*application.AttachInboundEvent, error) {
 		return nil, fmt.Errorf("Failed to receive grpc stream: %v", err)
 	}
 	return MapAttachRequest(req), nil
+}
+
+
+type grpcProgressStream struct {
+	stream pb.ImageService_PullImageServer
+}
+
+func (g *grpcProgressStream) Send(event *core.PullingEvent) error {
+	grcpEvent := MapCoreToProtoEvent(event)
+	return g.stream.Send(grcpEvent)
+}
+
+type Stream interface{
+	Send(*core.PullingEvent) error
 }

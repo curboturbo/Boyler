@@ -1,21 +1,28 @@
 package image
 
 import (
+	"boyler/internal/daemon/core"
 	domain "boyler/internal/daemon/core"
 	"boyler/pkg/files"
 	"boyler/pkg/logger"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 )
 
 type imageManager struct {
     imageDir string
+    OperationSystem string
+    Architecture string
 }
 
 func NewImageManager(imageDir string) ImageManager {
-    return &imageManager{imageDir: imageDir}
+    return &imageManager{imageDir: imageDir, 
+        OperationSystem: "linux", 
+        Architecture: "amd64",
+    }
 }
 
 func (i *imageManager) Extract(ctx context.Context, name string, unpackDir string) error {
@@ -123,10 +130,15 @@ func (i *imageManager) List(ctx context.Context) ([]*domain.Image, error) {
 	return images, nil
 }
 
-func (i *imageManager)  Pull(ctx context.Context, name string) (*domain.Image, error) {
-	// must download defined image from servers
-	// save to boyler/images/{name}/{name.tar.gz}, meta.json
-	// and return *domain.Image
-	// perhaps download from dockerHub or something like it
-	return &domain.Image{}, nil
+func (i *imageManager) Pull(ctx context.Context, name string, ch chan *core.PullingEvent) error {
+    defer close(ch)
+    imagePuller := NewDockerHubPuller(Platform{
+        OS: i.OperationSystem,
+        Architecture: i.Architecture,
+    }, ch)
+    _, err := imagePuller.Pull(ctx, name, i.imageDir)
+    if err != nil{
+        return fmt.Errorf("Failed to fetch image: %v", err)
+    }
+	return nil
 }

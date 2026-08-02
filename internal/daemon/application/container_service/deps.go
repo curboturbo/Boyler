@@ -2,6 +2,7 @@ package application
 
 import (
 	net "boyler/internal/daemon/application/network_service"
+	image "boyler/internal/daemon/application/image_service"
 	layer "boyler/internal/daemon/infrastructure/outbound/image"
 	overlay "boyler/internal/daemon/infrastructure/outbound/overlay"
 	registry "boyler/internal/daemon/infrastructure/outbound/registry"
@@ -22,6 +23,7 @@ type Deps struct {
 	Logger  *slog.Logger
 	Conf    ServiceConfig
 	CgroupFactory limits.Factory
+	Pull image.ImageService
 }
 
 type ServiceConfig struct {
