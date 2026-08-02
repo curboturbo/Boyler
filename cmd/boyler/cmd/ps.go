@@ -43,9 +43,8 @@ func printContainers(resp *pb.PsResponse) {
 	w := tabwriter.NewWriter(os.Stdout,0,0,3,' ',0,)
 	fmt.Fprintln(
 		w,
-		"CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tNAMES",
+		"CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\t NAMES",
 	)
-	
 	for _, container := range resp.GetContainers() {
 		fmt.Fprintf(
 			w,

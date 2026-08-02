@@ -1,6 +1,3 @@
-ROOT=/home/tema/Boyler
-
-
 OS = linux
 ARCH = amd_64
 
@@ -28,3 +25,8 @@ prepare:
 	-mkdir lib/containers
 	-mkdir lib/images
 	-mkdir bin
+
+
+.PHONY: clean
+clean:
+	-sudo ip link del boyler0
