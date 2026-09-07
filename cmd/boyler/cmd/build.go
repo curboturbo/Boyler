@@ -36,7 +36,7 @@ var buildCmd = &cobra.Command{
 		}
 		imageRef := from.Image + ":" + from.Tag
 
-		client, conn, err := NewGrpcDaemonClient()
+		client, conn, err := NewGrpcDaemonPullingClient()
 		if err != nil {
 			return commandError(err)
 		}
@@ -47,7 +47,7 @@ var buildCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(cmd.Context(), daemonRequestTimeout)
 		defer cancel()
 
-		stream, err := client.PullImage(ctx, &pb.PullRequest{ImageIdentity: imageRef})
+		stream, err := client.PullImage(ctx, &pb.PullImageRequest{ImageIdentity: imageRef})
 		if err != nil {
 			return commandError(err)
 		}
